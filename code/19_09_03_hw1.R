@@ -40,6 +40,9 @@ dseparated( g, "arrival_delay", "distance", c("depart_delay", "avg_speed") )
 dseparated( g, "arrival_delay", "distance", c("depart_delay", "avg_speed") )
 # [1] FALSE
 
+dseparated( g, "arrival_delay", "distance", c("depart_delay") )
+# [1] FALSE
+
 dseparated( g, "arrival_delay", "avg_speed", c("depart_delay", "avg_speed") )
 # [1] FALSE
 dseparated( g, "arrival_delay", "avg_speed", c("depart_delay" ) )
@@ -47,3 +50,13 @@ dseparated( g, "arrival_delay", "avg_speed", c("depart_delay" ) )
 
 dseparated( g, "arrival_delay", "avg_speed", c("depart_delay" ) )
 # [1] FALSE
+
+
+fig2.9 <- dagitty("dag { 
+X <- Z1 -> Z3 <- Z2 -> Y
+                  X <- Z3 -> Y
+                  X -> W -> Y
+                  }")
+impliedConditionalIndependencies( fig2.9 )
+
+dseparated( fig2.9, "Z2", "W", c("Z3" ) )
