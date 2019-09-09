@@ -1,0 +1,141 @@
+---
+title: "Testosterone, diversity, and group project performance project"
+author: "Cathy Su"
+date: "9/7/2019"
+output: pdf_document
+---
+
+
+## Assignment description
+
+See: 
+http://rosmarus.refsmmat.com/datasets/datasets/hormone-diversity/ 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(1234)
+# libraries
+library(tidyverse)
+library(lattice)
+library(dagitty)
+library(reshape2)
+library(grid)
+library(gridExtra)
+# data
+ind_dat <- read.csv("../data/Individual_Faultlines.csv",
+                     sep = ",", 
+                     header = T)
+team_dat <- read.csv("../data/Team_Faultlines.csv",
+                     sep = ",", 
+                     header = T)
+# make it a factor
+ind_dat$team.id <- as.factor(ind_dat$team.id)
+team_dat$team.id <- as.factor(team_dat$team.id)
+
+theme_hw <- theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()
+       # panel.grid.major =   element_line(colour = "gray",size=0.5)
+  )
+```
+
+## Introduction and data summary
+
+```{r intro}
+summary(ind_dat)
+summary(team_dat)
+# seems like interim.* columns contain a lot of missing data.
+
+```
+
+## Questions
+
+### Q1
+
+For each group, calculate the number of unique gender-ethnicity-country combinations (such as female-white-Russia or male-Indian-USA) among the group members, and store this with the other group information such as team size and performance. Also calculate the average testosterone level for each group.
+
+```{r score, fig.width=6, fig.height=3}
+get_score <-function(group){
+  score <- length(unique(ind_dat$combo[ind_dat$team.id == group,]))
+  return(score)
+}
+#  calculate the number of unique gender-ethnicity-country combinations
+ind_dat$combo <-paste(ind_dat$Gender, ind_dat$Ethnicity, ind_dat$Country)
+team_dat$score<- unlist(lapply(team_dat$team.id, 
+               function(x){length(unique(ind_dat$combo[ind_dat$team.id == x]))}))
+
+#  calculate the average testosterone level for each group.
+team_dat$avg.log.testosterone<- unlist(lapply(team_dat$team.id, 
+               function(x){mean(ind_dat$log.testosterone[ind_dat$team.id == x])}))
+
+#  calculate the average cortisol level for each group.
+team_dat$avg.log.cortisol<- unlist(lapply(team_dat$team.id, 
+               function(x){mean(ind_dat$log.cortisol[ind_dat$team.id == x])}))
+
+```
+
+### Q2
+
+Do exploratory data analysis to explore the composition of groups, the typical amount of diversity, and the typical amounts of testosterone. Note particularly that the data includes the logs of the cortisol and testosterone levels as well as the raw levels; does your EDA suggest you should use the logs or the raw values?
+
+#### Composition of groups 
+
+```{r groups, fig.width=5, fig.height=2}
+
+# visualise the distribution of diversity
+ggplot(team_dat, aes(x = score)) +
+  geom_histogram(bins = 4)+ labs(title="Gender-ethnicity-country score")
+
+# visualise the distribution of testosterone
+ggplot(team_dat, aes(x = avg.log.testosterone)) +
+  geom_histogram(bins = 4)+ labs(title="Avg log testosterone per team")
+
+p1 <-ggplot(ind_dat, aes(x= team.id, y=Testosterone))+
+  geom_boxplot()+theme_hw
+
+p2 <-ggplot(ind_dat, aes(x= team.id, y=log.testosterone))+
+  geom_boxplot()+theme_hw
+
+grid.arrange(p1, p2, ncol = 2)
+
+# visualise the distribution of cortisol
+ggplot(team_dat, aes(x = avg.log.cortisol)) +
+  geom_histogram(bins = 4)+ labs(title="Avg log cortisol per team")
+
+p1 <-ggplot(ind_dat, aes(x= team.id, y=Cortisol))+
+  geom_boxplot()+theme_hw
+
+p2 <-ggplot(ind_dat, aes(x= team.id, y=log.cortisol))+
+  geom_boxplot()+theme_hw
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+### Sketch out causal diagrams
+
+The findings suggest that diversity is beneficial for performance, but only if group-level testosterone is low; diversity has a negative effect on performance if group-level testosterone is high.
+
+```{r causal, fig.width=3, fig.height=2}
+library(dagitty)
+
+g <- dagitty('dag {
+    testosterone  [pos="0,0"]
+    diversity [pos="0,1"]
+    performance [pos="1,0.5"]
+    cortisol [pos="2,0"]
+    
+    testosterone -> performance <- diversity
+    cortisol-> performance 
+}')
+plot(g)
+
+impliedConditionalIndependencies( g )
+```
+
+
+### Q3
+
+### Q4
+
+### Q5
+
