@@ -74,6 +74,13 @@ team_dat$avg.log.cortisol<- unlist(lapply(team_dat$team.id,
 
 ```
 
+```{r cor, fig.width=6, fig.height=6}
+# check relationships of all variables of interest
+vars <- colnames(team_dat)[c(4:9, 15:17)]
+#cor(team_dat)
+pairs(team_dat[vars], pch = 19,  lower.panel=NULL)
+```
+
 ### Q2
 
 Do exploratory data analysis to explore the composition of groups, the typical amount of diversity, and the typical amounts of testosterone. Note particularly that the data includes the logs of the cortisol and testosterone levels as well as the raw levels; does your EDA suggest you should use the logs or the raw values?
@@ -134,8 +141,8 @@ impliedConditionalIndependencies( g )
 
 
 ### Q3
-
+TBD
 ### Q4
-
+TBD
 ### Q5
-
+TBD
