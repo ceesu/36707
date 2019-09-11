@@ -1,6 +1,6 @@
 ---
 title: "Testosterone, diversity, and group project performance project"
-author: "Cathy Su"
+author: "Qiao Su"
 date: "9/7/2019"
 output: pdf_document
 ---
@@ -10,6 +10,11 @@ output: pdf_document
 
 See: 
 http://rosmarus.refsmmat.com/datasets/datasets/hormone-diversity/ 
+
+The questions in the assignment center around the following variables:
+diversity, composition of groups (Ethnicity, Age, Gender, Country),
+testosterone:
+want to predict final.performance. This is The team's final performance score, but unclear if it reliably depends on final.cash, final.rank etc.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -48,9 +53,17 @@ summary(team_dat)
 
 ```
 
+## Handle missing data 
+Before calculating additional team level statistics, we saw there were <10 individuals with missing data.
+```{r missing, fig.width=8, fig.height=2, echo=FALSE}
+head(ind_dat[!complete.cases(ind_dat),])
+#head(team_dat[!complete.cases(team_dat$avg.log.testosterone),])
+```
+
 ## Questions
 
 ### Q1
+The original paper measured the diversity of each group using something called “group faultline analysis”, which looks at the group members’ genders, countries of origin, and ethnicities to calculate a diversity score. The calculation is somewhat involved, so we’ll make a simpler score. 
 
 For each group, calculate the number of unique gender-ethnicity-country combinations (such as female-white-Russia or male-Indian-USA) among the group members, and store this with the other group information such as team size and performance. Also calculate the average testosterone level for each group.
 
@@ -66,17 +79,23 @@ team_dat$score<- unlist(lapply(team_dat$team.id,
 
 #  calculate the average testosterone level for each group.
 team_dat$avg.log.testosterone<- unlist(lapply(team_dat$team.id, 
-               function(x){mean(ind_dat$log.testosterone[ind_dat$team.id == x])}))
+               function(x){mean(ind_dat$log.testosterone[ind_dat$team.id == x], na.rm = TRUE)}))
 
 #  calculate the average cortisol level for each group.
 team_dat$avg.log.cortisol<- unlist(lapply(team_dat$team.id, 
-               function(x){mean(ind_dat$log.cortisol[ind_dat$team.id == x])}))
+               function(x){mean(ind_dat$log.cortisol[ind_dat$team.id == x], na.rm = TRUE)}))
 
+#  calculate the average age for each group.
+team_dat$avg.age<- unlist(lapply(team_dat$team.id, 
+               function(x){mean(ind_dat$Age[ind_dat$team.id == x], na.rm = TRUE)}))
+
+team_dat$age.variance<- unlist(lapply(team_dat$team.id, 
+               function(x){var(ind_dat$Age[ind_dat$team.id == x], na.rm = TRUE)}))
 ```
 
-```{r cor, fig.width=6, fig.height=6}
+```{r cor, fig.width=10, fig.height=10}
 # check relationships of all variables of interest
-vars <- colnames(team_dat)[c(4:9, 15:17)]
+vars <- colnames(team_dat)[c(3:17)]
 #cor(team_dat)
 pairs(team_dat[vars], pch = 19,  lower.panel=NULL)
 ```
@@ -118,7 +137,16 @@ p2 <-ggplot(ind_dat, aes(x= team.id, y=log.cortisol))+
 grid.arrange(p1, p2, ncol = 2)
 ```
 
+What's up with the missing testosterone data?
+```{r age, fig.width=5, fig.height=2}
+#head(ind_dat[!complete.cases(ind_dat$log.testosterone),])
+head(team_dat[!complete.cases(team_dat),])
+```
+
 ### Sketch out causal diagrams
+Some research has suggested that groups of people working on a task can do better if the group is more diverse, since diverse group members can suggest more creative ideas and make better decisions. At the same time, diverse groups can have more conflict than less diverse groups, possibly eliminating those benefits.
+
+People with high levels of testosterone tend to be competitive and may try to dominate their groups, leading to conflict, while people with low testosterone may be more cooperative. So do groups with low testosterone work better together, and benefit more from diversity, than those with high testosterone?
 
 The findings suggest that diversity is beneficial for performance, but only if group-level testosterone is low; diversity has a negative effect on performance if group-level testosterone is high.
 
@@ -128,11 +156,18 @@ library(dagitty)
 g <- dagitty('dag {
     testosterone  [pos="0,0"]
     diversity [pos="0,1"]
-    performance [pos="1,0.5"]
+    final.performance [pos="1,0.5"]
     cortisol [pos="2,0"]
-    
-    testosterone -> performance <- diversity
-    cortisol-> performance 
+    conflict[pos="2,0"]
+    decision_making[pos="2,0"]
+    creativity[pos="0,1"]
+
+    diversity-> decision_making
+    decision_making -> final.performance<- creativity
+    diversity -> testosterone -> decision_making -> final.performance
+    diversity -> cortisol-> final.performance
+    testosterone -> final.performance <- diversity
+    cortisol->final.performance
 }')
 plot(g)
 
@@ -141,8 +176,40 @@ impliedConditionalIndependencies( g )
 
 
 ### Q3
-TBD
+The data also includes participant ages. It’s possible age is related to hormone levels, as is gender, and that both are related to final performance (perhaps older team members have more relevant experience, for example). Consider carefully whether you want to include these variables in the model, and how you should include them — average team member age? Gender proportion?
+#### It’s possible age is related to hormone levels? performance?
+```{r age2, fig.width=5, fig.height=2}
+p1 <-ggplot(team_dat, aes(x = females/team.size)) +
+  geom_histogram(bins =4)
+p2 <-ggplot(team_dat, aes(x = females/team.size, y = score)) +
+  geom_point()
+p3 <-ggplot(team_dat, aes(x = females/team.size, y = avg.log.testosterone)) +
+  geom_point()
+p4 <-ggplot(team_dat, aes(x = females/team.size, y = final.performance)) +
+  geom_point()
+grid.arrange(p1, p2, p3, p4, ncol = 4)
+```
+#### age related to hormone levels? performance?
+
+```{r females, fig.width=8, fig.height=2}
+p1 <-ggplot(ind_dat, aes(x= team.id, y=Age))+
+  geom_boxplot()+theme_hw
+p2 <-ggplot(team_dat, aes(x = avg.age, y = score)) +
+  geom_point()
+p3 <-ggplot(team_dat, aes(x = age.variance, y = final.performance)) +
+  geom_point()
+p4 <-ggplot(team_dat, aes(x =  age.variance, y = avg.log.testosterone)) +
+  geom_point()
+grid.arrange(p1, p2, p3, p4, ncol = 4)
+```
+
 ### Q4
-TBD
+Build a model predicting group performance (final.performance) using the group’s diversity score (be sure to control for the size of the group) and its average testosterone level. Is there an interaction between the two? Do your results resemble those presented by the original study?
+
+####
+
+####
 ### Q5
-TBD
+####
+
+####

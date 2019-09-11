@@ -12,6 +12,7 @@ graphics.off()
 # showing the model parameters.
 # Syntax: lm(y~x, data)
 lm.fit = lm( Hwt~Bwt , data =cats)
+lm.basic = lm( Hwt, data =cats)
 summary(lm.fit)
 ###### PART B
 # Build an analysis of variance table to test the model
@@ -19,5 +20,6 @@ summary(lm.fit)
 # quantitative response variable, the tool normally used in statistics is 
 # Analysis of Variances, also called ANOVA.
 anova(lm.fit)
+
 ###### PART C
 # Obtain a 95% confidence interval for β1, using the R regression output.
