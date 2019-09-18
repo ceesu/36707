@@ -219,7 +219,49 @@ grid.arrange(p1, p2, p3, p4, ncol = 4)
 ### Q4
 Build a model predicting group performance (final.performance) using the group’s diversity score (be sure to control for the size of the group) and its average testosterone level. Is there an interaction between the two? Do your results resemble those presented by the original study?
 
+To make a fair comparison we checked what would happen if we controlled for proportion of females:
+
+```{r test_model_w_prop, fig.width=4, fig.height=4, warning=FALSE}
+# model with normalized score
+mod = lm(final.performance ~ avg.log.testosterone + proportion.females, data = team_dat)
+summary(mod)
+#plot(mod, which=1, col=c("blue"))
+```
+
+However, here the coefficient of proportion (-2.2224) is the only one found to be significant (p < 0.05) and this suggests that 
+
+
+```{r test_model, fig.width=4, fig.height=4, warning=FALSE}
+# model with normalized score
+mod = lm(final.performance ~ avg.log.testosterone + diversity.score + avg.log.testosterone:diversity.score, data = team_dat)
+# model with unnormalized score
+mod2 =lm(final.performance ~ avg.log.testosterone + score + avg.log.testosterone:score, data = team_dat)
+mod3=lm(final.performance ~ avg.log.testosterone + score + team.size + avg.log.testosterone:score, data = team_dat)
+#summary(mod2)
+summary(mod)
+summary(mod3)
+#plot(mod, which=1, col=c("blue"))
+```
+Surprisingly, whereas we had found a positive (9.3562) and significant (p < 0.001) effect of both testosterone and the interaction term testosterone:score on performance when we use the unnormalized diversity score, when we do normalize the diversity score by team size there are no coefficients found to be significant. This suggests that there is no significant interaction between diversity and testosterone and any connection they have with performance can be explained by team size. 
+
+Our results disagree with those of the original study. This may not be strange, however, given that there wasn't a strong effect of either variable alone on performance.
+
+### Effect of cortisol on relationship between diversity and performance
+We then examined whether stressed groups have better or worse performance by looking at pearson correlation. In the diagnostic plot, the correlation of cortisol with final.performance seems weaker than the correlation of testosterone with final.performance as shown below. However the r squared value shows that there is still some linearity in this relationship.
+
+```{r horm, fig.width=8, fig.height=2.5, warning=FALSE}
+t <- cor(team_dat$avg.log.testosterone,  team_dat$final.performance)   
+c <- cor(team_dat$avg.log.cortisol,  team_dat$final.performance) 
+p1 <-ggscatter(team_dat, x = "avg.log.testosterone", y = "final.performance",
+               cor.coef = TRUE, add = "reg.line", cor.method = "pearson") 
+p2 <-ggscatter(team_dat, x = "avg.log.cortisol", y = "final.performance",
+               cor.coef = TRUE,  add = "reg.line", cor.method = "pearson")
+grid.arrange(p1, p2, ncol = 2,
+             top =textGrob("Relationship between hormone level and performance",
+                          gp=gpar(fontsize=12,font=3)))
+```
 ####
+
 
 ####
 ### Q5
