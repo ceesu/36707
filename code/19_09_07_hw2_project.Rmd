@@ -189,6 +189,19 @@ p4 <-ggplot(team_dat, aes(x = females/team.size, y = final.performance)) +
   geom_point()
 grid.arrange(p1, p2, p3, p4, ncol = 4)
 ```
+
+We therefore wondered whether we needed to adjust the diversity score by team size and proportion of females. As seen below, based on the correlation between team size and 
+
+```{r cor,fig.width=8, fig.height=2, echo=FALSE, warning= FALSE}
+p1 <-ggplot(team_dat, aes(x = team.size, y = score)) +
+  geom_count() +theme(plot.title = element_text(hjust = 0.5))
+p2 <-ggplot(team_dat, aes(x = females/team.size, y = score)) +
+  geom_count() +theme(plot.title = element_text(hjust = 0.5))
+grid.arrange(p1, p2, ncol = 2,
+             top =textGrob("Diversity score correlates with team size but less with proportion of females" ,
+                          gp=gpar(fontsize=20,font=3))) 
+```
+
 #### age related to hormone levels? performance?
 
 ```{r females, fig.width=8, fig.height=2}

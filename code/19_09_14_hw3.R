@@ -12,10 +12,13 @@ head(snowgeese)
 ##########################################
 # scatterplot
 pairs(snowgeese, pch = 19, lower.panel = NULL)
+library(car)
 model1<- lm(photo~obs1,data=snowgeese)
 summary(model1)
+linearHypothesis(model1, "obs1 = 1")
 ##########################################
 # scatterplot
+model1 <- 
 model2<- lm(sqrt(photo)~sqrt(obs1),data=snowgeese)
 summary(model2)
 
