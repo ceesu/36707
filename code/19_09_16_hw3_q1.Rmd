@@ -42,32 +42,6 @@ theme_hw <- theme(plot.title = element_text(hjust = 0.5),
         axis.ticks.x=element_blank()
        # panel.grid.major =   element_line(colour = "gray",size=0.5)
   )
-
-##############################
-# calculate additional vars
-get_score <-function(group){
-  score <- length(unique(ind_dat$combo[ind_dat$team.id == group,]))
-  return(score)
-}
-#  calculate the number of unique gender-ethnicity-country combinations
-ind_dat$combo <-paste(ind_dat$Gender, ind_dat$Ethnicity, ind_dat$Country)
-team_dat$score<- unlist(lapply(team_dat$team.id, 
-               function(x){length(unique(ind_dat$combo[ind_dat$team.id == x]))}))
-
-#  calculate the average testosterone level for each group.
-team_dat$avg.log.testosterone<- unlist(lapply(team_dat$team.id, 
-               function(x){mean(ind_dat$log.testosterone[ind_dat$team.id == x], na.rm = TRUE)}))
-
-#  calculate the average cortisol level for each group.
-team_dat$avg.log.cortisol<- unlist(lapply(team_dat$team.id, 
-               function(x){mean(ind_dat$log.cortisol[ind_dat$team.id == x], na.rm = TRUE)}))
-
-#  calculate the average age for each group.
-team_dat$avg.age<- unlist(lapply(team_dat$team.id, 
-               function(x){mean(ind_dat$Age[ind_dat$team.id == x], na.rm = TRUE)}))
-
-team_dat$age.variance<- unlist(lapply(team_dat$team.id, 
-               function(x){var(ind_dat$Age[ind_dat$team.id == x], na.rm = TRUE)}))
 ```
 
 ## Introduction
