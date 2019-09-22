@@ -158,7 +158,7 @@ grid.arrange(p1, p2, ncol = 2,
 We checked the distribution of other key variables besides hormone level in our model, and saw that in particular, our diversity score and team size appear bimodal. Although our score is differently calculated, this agrees with [@Akinola2018] which classified diversity score into two bins.
 
 ```{r dists, fig.width=8, fig.height=2, echo=FALSE, warning= FALSE}
-p1 <-ggplot(team_dat, aes(x=diversity.score))+
+p1 <-ggplot(team_dat, aes(x=score))+
   geom_density()
 p2 <-ggplot(team_dat, aes(x=proportion.females))+
   geom_density()
@@ -188,7 +188,7 @@ Gender is incorporated in the diversity score, but the variable females was meas
 ```{r females, fig.width=8, fig.height=6, echo=FALSE}
 p1 <-ggplot(team_dat, aes(x = proportion.females)) +
   geom_histogram(bins =4)
-p2 <-ggplot(team_dat, aes(x = proportion.females, y = diversity.score)) +
+p2 <-ggplot(team_dat, aes(x = proportion.females, y = score)) +
   geom_count()
 # p3 <-ggplot(team_dat, aes(x = females/team.size, y = avg.log.testosterone)) +
 #   geom_point()
@@ -207,7 +207,7 @@ A similar situation occurs for age. When we plotted the spread of age across gro
 ```{r age, fig.width=8, fig.height=6, warning=FALSE, echo=FALSE}
 p1 <-ggplot(ind_dat, aes(x= team.id, y=Age))+
   geom_boxplot()+theme_hw
-p2 <-ggplot(team_dat, aes(x = age.variance, y = diversity.score)) +
+p2 <-ggplot(team_dat, aes(x = age.variance, y = score)) +
   geom_count()
 # p3 <-ggplot(team_dat, aes(x = avg.age, y = avg.log.testosterone)) +
 #   geom_point()
@@ -235,14 +235,14 @@ To start we want to check the simplest assumptions that 1) diversity score posit
 
 ```{r model, fig.width=8, fig.height=4, warning=FALSE, echo=TRUE}
 mod_t = lm( final.performance ~avg.log.testosterone, data = team_dat)
-mod_d = lm( final.performance ~diversity.score, data = team_dat)
+mod_d = lm( final.performance ~score, data = team_dat)
 #summary(mod_d)
 #summary(mod_t)
 ```
-For these simple models, the coefficient of diversity score (-0.4605) and average log testosterone (0.7032) are not particularly large in magnitude or significant (p >0.05) indicating that neither of these two predictors alone shows a clear relationship with group performance. This agrees with what the authors found.
+For these simple models, the coefficient of diversity score (0.065) and average log testosterone (0.7032) are not particularly large in magnitude or significant (p >0.05) indicating that neither of these two predictors alone shows a clear relationship with group performance. This agrees with what the authors found.
 
-### Effect of group diversity on relationship between testosterone and performance
-Next we examined whether the interaction between them could predict performance. 
+### Q4: Effect of group diversity on relationship between testosterone and performance
+Next we fit a model to examine whether the interaction between them could predict performance. 
 
 ```{r test_model, fig.width=4, fig.height=4, warning=FALSE}
 # model with normalized score
@@ -250,9 +250,9 @@ mod3=lm(final.performance ~ avg.log.testosterone + score + team.size + avg.log.t
 summary(mod3)
 #plot(mod, which=1, col=c("blue"))
 ```
-We find a significant positive effect of testosterone on performance when controlling for diversity score and team size (coefficient = 10.2743, p < 0.001). Further we find a significant positive effect of diversity score on performance when controlling for testosterone, team size and their interaction (coefficient = 10.1889, p < 0.001). The interaction term has a negative coefficient. This suggests that whereas each of testosterone and diversity aids performance, their interaction works against these effects. Our results are in line with those of the original study.
+We found a significant positive effect of testosterone on performance when controlling for diversity score and team size (coefficient = 10.2743, p < 0.001). Further we find a significant positive effect of diversity score on performance when controlling for testosterone, team size and their interaction (coefficient = 10.1889, p < 0.001). The interaction term has a negative coefficient. This suggests that whereas each of testosterone and diversity aids performance, their interaction works against these effects. Our results are in line with those of the original study.
 
-### Effect of cortisol on relationship between diversity and performance
+### Q5: Effect of cortisol on relationship between diversity and performance
 We then examined whether stressed groups have better or worse performance by looking at pearson correlation. In the diagnostic plot, the correlation of cortisol with final.performance seems weaker than the correlation of testosterone with final.performance as shown below. However the r squared value shows that there is still some linearity in this relationship.
 
 ```{r horm, fig.width=8, fig.height=2.5, warning=FALSE}
@@ -273,7 +273,7 @@ mod_c <- lm(final.performance ~ avg.log.cortisol, data = team_dat)
 ```
 When we fit the very simplest model of final.performance ~ avg.log.cortisol, we find a positive (0.1217) but not significant (p-value 0.56) coefficient as our scatterplots above may suggest.
 
-### Model with interaction of both hormones and diversity score
+### Model with interaction of cortisol and diversity score
 
 Next, we tested whether cortisol levels could change the relationship between diversity score and performance with a model containing each of these variables and their three way interaction.
 
@@ -287,10 +287,25 @@ Here we found that stress seems to positively impact performance (coefficient of
 
 This suggests stressed groups have better performance and stress changes the effect of diversity to negatively impact performance.
 
-### Caveats of the analysis
-* We built our hypothesis according to the causal graph, but we do not have sufficient domain knowledge so some of our assumptions may be wrong (e.g. does proportion of females only affect testosterone and diversity, as we assumed in order to discard this variable in EDA?)
-* our diversity score was calculated differently (and does not seem to be predictive of performance on its own). 
-* 
+### Incorporating both hormone measurements
 
+This suggests cortisol should also be in our model, so we lastly fit a full model with both hormone measurements and their three way interaction with diversity.
+
+```{r complete, fig.width=8, fig.height=4, warning=FALSE}
+#  will stress change the effect of diversity score on performance?
+mod = lm(final.performance ~ avg.log.cortisol + avg.log.testosterone + score + team.size +avg.log.cortisol:score:avg.log.testosterone, data = team_dat)
+summary(mod)
+#plot(mod)
+```
+Here the coefficients on cortisol is positive (2.95) but the coefficient on diversity score is negative (-1.23) at p < 0.05, which is what we would expect. However the coefficient on testosterone is not significantly nonzero contrary to our hypothesis that group testosterone is important. Hoever the model could be a bit too complex since it has a lower R squared value than the model without cortisol.
+
+### Caveats of the analysis
+Although we had some similar results to teh original study, our results may not be directly comparable because of the following:
+
+* their model includes many more terms such as proportion of females which we chose to discard.
+* We built our hypothesis according to the causal graph, but we do not have sufficient domain knowledge so some of our assumptions may be wrong (e.g. does proportion of females only affect testosterone and diversity, as we assumed in order to discard this variable in EDA?)
+* our diversity score was calculated differently than their faultline analysis. 
+
+Furthermore, we have shown that stress has a significant effect as measured by cortisol levels which was not discussed in depth in their original analysis.
 
 ## Bibliography

@@ -5,7 +5,7 @@
 # Cathy Su
 
 ##########################################
-# install.packages("alr3")
+#install.packages("alr3")
 library(alr3)
 help(snowgeese)
 head(snowgeese)
@@ -22,6 +22,9 @@ model1 <-
 model2<- lm(sqrt(photo)~sqrt(obs1),data=snowgeese)
 summary(model2)
 
+> pval <- 1- pf(f, 2, d)
+> pval
+[1] 0.01143571
 # square root: stabilize the error variance
 model3<- lm(sqrt(photo)~sqrt(obs1),data=snowgeese)
 summary(model2)
@@ -30,7 +33,8 @@ summary(model2)
 model3<- lm(sqrt(photo)~sqrt(obs1),data=snowgeese)
 
 # obs1x sigma^2 variance
-
+model4 <- lm(photo~obs1, weights = 1/obs1, data=snowgeese)
+summary(model4)
 # average
 summary(lm(sqrt(photo)~sqrt(obs2),data=snowgeese))
 
