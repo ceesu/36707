@@ -32,12 +32,18 @@ test <- prostate[prostate$train == FALSE, 2:10] # 30 obs
 #http://www.sthda.com/english/articles/37-model-selection-essentials-in-r/155-best-subsets-regression-essentials-in-r/
 # they 
 models <- regsubsets(lpsa~., data = train, nvmax = 2)
-summary(models)
+res <- summary(models)
+data.frame(
+  #AIC = which.min(res$aic),
+  BIC = which.min(res$bic)
+)
 
 model <- lm(lpsa ~ lcavol + lweight, data = swiss)
+
 # AIC to select
 
 # BIC
+res$bic
 
 # five fold CV
 # seee http://www.sthda.com/english/articles/38-regression-model-validation/157-cross-validation-essentials-in-r/
@@ -64,6 +70,7 @@ head(study1)
 
 
 #  Add all two-way interactions of the variables you chose.
+# https://stackoverflow.com/questions/47144532/how-to-include-all-possible-two-way-interaction-terms-in-a-linear-model-in-r
 
 
 # Now use forward stepwise regression, subset selection, and the lasso to find a sets of covariates
@@ -72,8 +79,8 @@ head(study1)
 
 
 #Estimate the prediction error of your each model 
-# (stepwise, subset selection, and lasso) by using cross-
-#   validation.
+# (stepwise, subset selection, and lasso) by using cross-validation.
+# 5-fold? on the study1 data only (is this not the 'wrong' way?)
 
 
 # Now load the data from Study 2. Using the same models and same coefficients you used in Study
