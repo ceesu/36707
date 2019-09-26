@@ -1,0 +1,62 @@
+---
+title: "Variable Selection Code"
+author: "Alex Reinhart"
+date: "9/20/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Stepwise regression
+
+Stepwise regression is built into R. The `step` function does stepwise regression using AIC to decide what variables to include; it can do foward stepwise, backward stepwise, or stepwise where it considers adding or removing a variable at every step.
+
+To run, we must provide an initial model fit -- the starting model -- and a "scope", meaning the largest model to consider. `step` then adds and removes variables from the scope and returns the final model.
+
+Here we see `step` doing several steps and picking a final model; it shows the variables it considered and the resulting AIC at each step:
+
+```{r}
+fit <- lm(mpg ~ cyl, data=mtcars)
+step(fit, mpg ~ cyl + disp + hp + drat + wt + qsec + vs + am + gear + carb, direction="forward")
+```
+
+## Best subsets
+
+The `leaps` package does best subset selection. Annoyingly, it takes X as a matrix rather than using a formula like `step` or `lm`.
+
+It returns a list with a bunch of components:
+
+```{r}
+library(leaps)
+#leaps(mtcars[, -1], mtcars[, 1])
+```
+
+Here we see `leaps` has tried fitting 91 possible versions of the model. The `$which` component of the list shows the variables included in each tested model. `$size` gives each model's number of variables and `$Cp` gives the Mallows' Cp of each model, for you to use when deciding which one to use.
+
+## Lasso
+
+The `glmnet` package is the main package for the lasso in R. It also takes a matrix of Xs rather than a formula.
+
+```{r}
+library(glmnet)
+lasso_fit <- glmnet(as.matrix(mtcars[, -1]), mtcars[, 1])
+```
+
+The fit returned is for an entire sequence of lambdas, from a large lambda that results in the model having 0 coefficients to one where all variables are entered into the model.
+
+To help you decide which lambda to use, the `cv.glmnet` function does cross-validation:
+
+```{r}
+cvfit <- cv.glmnet(as.matrix(mtcars[, -1]), mtcars[, 1])
+cvfit$lambda.min
+```
+
+This is the lambda corresponding to the smallest cross-validated error. We can get the coefficients of the model with this lambda:
+
+```{r}
+coef(cvfit, s = "lambda.min")
+```
+
+So we see only three variables have been included in the model.

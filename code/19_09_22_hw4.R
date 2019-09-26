@@ -7,11 +7,20 @@
 ##########################################
 # Q3 Carry out the best subset linear regression analysis
 # Elements of Statistical Learning, exercise 7.9.
+# Ex. 7.9 For the prostate data of Chapter 3, carry out a best-subset linear
+# regression analysis, as in Table 3.3 (third column from left). Compute the
+# AIC, BIC, five- and tenfold cross-validation estimates
+# of prediction error. Discuss the results.
+
 library(tidyverse)
 library(caret)
 #install.packages("caret")
 #install.packages("leaps")
+#install.packages("bestglm")
+library(bestglm)
 library(leaps)
+library(glmnet)
+
 #import hte data
 # The data for this example come from a study by Stamey et al. (1989). They
 # examined the correlation between the level of prostate-specific antigen and
@@ -27,32 +36,53 @@ prostate <- read.csv("~/36707/data/prostate.data", sep = "\t")
 head(prostate)
 train <- prostate[prostate$train == TRUE, 2:10] # 67 obs
 test <- prostate[prostate$train == FALSE, 2:10] # 30 obs
+train_dat <- train
+colnames(train_dat)[9] <- "y"
+test_dat <- test
+colnames(test_dat)[10] <- "y"
+data <- prostate[2:10]
+colnames(data)[9] <- "y"
 # perform best subsets
 # how to choose k involves the tradeoff between bias and variance
 #http://www.sthda.com/english/articles/37-model-selection-essentials-in-r/155-best-subsets-regression-essentials-in-r/
 # they 
-models <- regsubsets(lpsa~., data = train, nvmax = 2)
-res <- summary(models)
-data.frame(
-  #AIC = which.min(res$aic),
-  BIC = which.min(res$bic)
-)
 
-model <- lm(lpsa ~ lcavol + lweight, data = swiss)
+library(leaps)
+models <- regsubsets(lpsa~., data = prostate)
+summary(models)
+subsets_res
 
 # AIC to select
-
+library(bestglm)
+res.bestglm <- bestglm(data, IC="AIC")
+summary(res.bestglm$BestModel)
 # BIC
-res$bic
-
-# five fold CV
-# seee http://www.sthda.com/english/articles/38-regression-model-validation/157-cross-validation-essentials-in-r/
-
+# subsets_res$bic
+# choice <- which.min(subsets_res$bic)
+res.bestglm <- bestglm(data, IC="BIC")
+summary(res.bestglm$BestModel)
+# five fold CV following approach from variable-selection-code.Rmd
+cvfit <- cv.glmnet(as.matrix(prostate[,-9]), prostate[, 9], nfolds=5, type.measure="mse")
+cvfit$cvm[cvfit$lambda == cvfit$lambda.min] 
+coef(cvfit, s = "lambda.min")
 
 # 10fold CV
+cvfit <- cv.glmnet(as.matrix(prostate[,-9]), prostate[, 9], nfolds=10, type.measure="mse")
+cvfit$cvm[cvfit$lambda == cvfit$lambda.min] 
+coef(cvfit, s = "lambda.min")
 
-## Now do best subset regression.
+###### TEST ERRORS?
+# five fold CV MSE
+fit5 <-cv.glmnet(as.matrix(train[,-9]), train[, 9], nfolds=5, 
+                 type.measure="mse")
+yhat <- predict(fit5, s=fit5$lambda.1se, newx=as.matrix(test[,-9]))
+mse <- mean((test[, 9] - yhat)^2)
 
+# 10 fold CV MSE
+fit10 <-cv.glmnet(as.matrix(train[,-9]), train[, 9], nfolds=10, 
+                 type.measure="mse")
+yhat <- predict(fit10, s=fit10$lambda.1se, newx=as.matrix(test[,-9]))
+mse <- mean((test[, 9] - yhat)^2)
 
 ##########################################
 # Q4 scatterplot
@@ -68,7 +98,8 @@ head(study1)
 # don’t include the subject’s actual age or their parents’ ages, 
 # for instance). Don’t get too picky.
 
-
+vars <- colnames(study1)[4:12, 13]
+lm(a ~ (b + c + d)^2)
 #  Add all two-way interactions of the variables you chose.
 # https://stackoverflow.com/questions/47144532/how-to-include-all-possible-two-way-interaction-terms-in-a-linear-model-in-r
 

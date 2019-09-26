@@ -1,0 +1,27 @@
+---
+title: "Project part 3"
+author: "Cathy Su"
+date: "9/10/2019"
+output: 
+  pdf_document:
+  highlight: tango
+bibliography: hw3.bib
+---
+
+## Introduction
+
+Diversity and conflict are considered important factors which influence how well we work in groups [@vanK]. As the working world becomes more connected across the globe and thus the diversity of organizational groups increases, it is important to characterize the effect of diversity on group performance. Previous work by [@Akinola2018] suggests that both diversity and group hormone levels will influence how well groups perform on a competetive task. In their study, they considered levels of the two hormones testosterone and cortisol. Testosterone is involved in dominance and competition related behaviour in individuals and is produced at a higher level in males than females, while cortisol is a hormone released during physical and psychological stress [@MEHTA2015163].  
+
+In their work, [@Akinola2018] collected both demographic data and hormone measurements from groups of MBA students who partcipated in a competetive week long project where their goal was to outperform other groups. There were 370 individuals randomly organized into 74 groups.  Based on their demographic and hormone measurement data, the authors concluded that diversity is beneficial for performance, but only if group-level testosterone is low; and diversity has a negative effect on performance if group-level testosterone is high. However, the authors did not mention analyzing cortisol even though cortisol levels is suggested to have an effect testosterone's role in status-relevant behavior [@MEHTA2015163].
+
+To validate the author's hypothesis and examine the specific role of cortisol, we have obtained the [@Akinola2018] dataset which has been processed by [Nifty Datasets](http://rosmarus.refsmmat.com/datasets/datasets/hormone-diversity/) into separate individual level and group level datasets. Here we test the interactions between the hormone profiles of both cortisol and testosterone by modelling their effect on performance in the context of the demographic variables collected and the group diversity.
+
+### Conclusion
+
+Here we have analyzed demographic data and hormone measurements from groups of MBA students performing a competetive project, previously published by [@Akinola2018]. We sought to investigate the authors' hypothesis that group diversity has a testosterone-dependent effect on group performance and also to check whether cortisol levels had an effect on this relationship.
+
+By building linear models of performance, we have shown that although testosterone and diversity score alone do not predict performance, indeed when they are both included in the model interaction between diversity and testosterone has a significant negative effect on performance (p < 0.01) implying that high diversity and high testosterone are antagonizing factors. Although stressed groups did not have significantly different performance, we also found that when controlling for diversity cortisol has similar effects. The interaction between cortisol and diversity also has a significant negative effect on performance (p < 0.05) implying that higher diversity and higher cortisol counteract each other. When looking at both hormone measurements simultaneously with diversity score, surprisingly we found that when accounting for cortisol, testosterone levels do not seem to have a significant effect on performance. Rather only the interaction of cortisol and testosterone together has a slight negative effect on performance (p < 0.01). Overall, this suggests that perhaps, stress has a more important underlying role in group performance than previously suggested and may mediate effects seen in the relationship between testosterone and performance.
+
+Although we had some similar findings to teh original study when examining diversity and testosterone, our results may not be directly comparable because of some differences in our methodology. Most prominently, they have used a faultline analysis to evaluate diversity. As well, we have not included some of the variables that are present in the models which they tested e.g. proportion of females. We chose to discard these variables based upon our EDA and our reasoning about the relationship between variables collected in the study. Lastly we cannot compare our findings about cortisol because this was not discussed in depth in their original analysis.
+
+# Bibliography
