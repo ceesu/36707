@@ -90,7 +90,12 @@ mse <- mean((test[, 9] - yhat)^2)
   # http://rosmarus.refsmmat.com/datasets/datasets/false-positive/
                                                                                            
 
-study1 <- read.csv("~/36707/data/study-1.csv")
+study1 <- read.csv("~/Documents/36707/data/study-1.csv")
+study1$cond <- as.factor(as.character(study1$cond))
+study1$political<- as.factor(study1$political)
+study1$bird<- as.factor(study1$bird)
+study1$quarterback<- as.factor(study1$quarterback)
+study1$root <- as.factor(study1$root)
 head(study1)
 
 # Build a regression model to predict feelold 
@@ -98,20 +103,62 @@ head(study1)
 # don’t include the subject’s actual age or their parents’ ages, 
 # for instance). Don’t get too picky.
 
-vars <- colnames(study1)[4:12, 13]
-lm(a ~ (b + c + d)^2)
+# https://stackoverflow.com/questions/5251507/how-to-succinctly-write-a-formula-with-many-variables-from-a-data-frame
+vars <- colnames(study1)[c(4:8, 10:12, 14:16)]
+fmla <- as.formula(paste("feelold ~ ", paste(vars, collapse= "+")))
+fmla <- as.formula(paste("feelold ~ (", paste(vars, collapse= "+"), " )^2"))
+fit <- lm(fmla, data = study1)
 #  Add all two-way interactions of the variables you chose.
 # https://stackoverflow.com/questions/47144532/how-to-include-all-possible-two-way-interaction-terms-in-a-linear-model-in-r
-
 
 # Now use forward stepwise regression, subset selection, and the lasso to find a sets of covariates
 # you believe are the best predictors of feelold. Use only Study 1 data for this part. 
 
+## Stepwise regression
+fit <- lm(feelold ~ 0., data = study1)
+step(fit, fmla, direction="forward")
 
+##### Subset selection
+library(leaps)
+leaps(study1[,c(4:8, 10:12, 14:16)], 
+      study1[, c(13)], method = "forward")
+models <- regsubsets(fmla, data = study1, nbest =1,
+                     method = "exhaustive")
+res <-summary(models)
+which.max(res$adjr2)
+temp<-res$which[7,]
+mod <- temp[temp=="TRUE"]
+names(mod)
+paste(names(mod), collapse= "+")
+plot(models, scale = "adjr2", main = "Adjusted R^2")
+
+##### LASSO
+library(glmnet)
+predictors <- as.matrix(sapply(study1[,c(4:8, 10:12, 14:16)], as.numeric))  
+# transform dataframe to matrices as required by glmnet
+# https://stackoverflow.com/questions/27580267/how-to-make-all-interactions-before-using-glmnet
+x <- model.matrix(fmla, study1)[, -1]
+y <- as.matrix(study1[, c(13)], ncol=1)
+
+#  decide which lambda to use
+# must include a multi factor model
+cvfit <- cv.glmnet(x, y)
+cvfit$lambda.min
+temp <-coef(cvfit, s = "lambda.min")
+sub <- temp[temp[,1] > 0.0,0]  
+lasso_fit <- glmnet(x, y)
+
+# specify the models.
+m_step <- "feelold ~ cond + bird + diner + quarterback + cond:bird + 
+    bird:quarterback - 1"
+m_subset <- paste("feelold ~ ", paste(names(mod)[2: length(mod)], collapse= " + "))
+m_subset
+m_lasso <- paste("feelold ~ ", paste(rownames(sub)[2:4], collapse= " + "))
+m_lasso
 
 #Estimate the prediction error of your each model 
 # (stepwise, subset selection, and lasso) by using cross-validation.
-# 5-fold? on the study1 data only (is this not the 'wrong' way?)
+# models
 
 
 # Now load the data from Study 2. Using the same models and same coefficients you used in Study
