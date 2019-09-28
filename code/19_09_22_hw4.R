@@ -50,7 +50,6 @@ colnames(data)[9] <- "y"
 library(leaps)
 models <- regsubsets(lpsa~., data = prostate)
 summary(models)
-subsets_res
 
 # AIC to select
 library(bestglm)
@@ -62,12 +61,12 @@ summary(res.bestglm$BestModel)
 res.bestglm <- bestglm(data, IC="BIC")
 summary(res.bestglm$BestModel)
 # five fold CV following approach from variable-selection-code.Rmd
-cvfit <- cv.glmnet(as.matrix(prostate[,-9]), prostate[, 9], nfolds=5, type.measure="mse")
+cvfit <- cv.glmnet(as.matrix(data[,-9]), data[, 9], nfolds=5, type.measure="mse")
 cvfit$cvm[cvfit$lambda == cvfit$lambda.min] 
 coef(cvfit, s = "lambda.min")
 
 # 10fold CV
-cvfit <- cv.glmnet(as.matrix(prostate[,-9]), prostate[, 9], nfolds=10, type.measure="mse")
+cvfit <- cv.glmnet(as.matrix(data[,-9]), data[, 9], nfolds=10, type.measure="mse")
 cvfit$cvm[cvfit$lambda == cvfit$lambda.min] 
 coef(cvfit, s = "lambda.min")
 
@@ -90,7 +89,7 @@ mse <- mean((test[, 9] - yhat)^2)
   # http://rosmarus.refsmmat.com/datasets/datasets/false-positive/
                                                                                            
 
-study1 <- read.csv("~/Documents/36707/data/study-1.csv")
+study1 <- read.csv("~/36707/data/study-1.csv")
 study1$cond <- as.factor(as.character(study1$cond))
 study1$political<- as.factor(study1$political)
 study1$bird<- as.factor(study1$bird)
@@ -116,18 +115,20 @@ fit <- lm(fmla, data = study1)
 
 ## Stepwise regression
 fit <- lm(feelold ~ 0., data = study1)
-step(fit, fmla, direction="forward")
+step_m <- step(fit, fmla, direction="forward")
 
 ##### Subset selection
 library(leaps)
-leaps(study1[,c(4:8, 10:12, 14:16)], 
+models <-leaps(study1[,c(4:8, 10:12, 14:16)], 
       study1[, c(13)], method = "forward")
 models <- regsubsets(fmla, data = study1, nbest =1,
-                     method = "exhaustive")
+                     method = "forward")
 res <-summary(models)
 which.max(res$adjr2)
 temp<-res$which[7,]
-mod <- temp[temp=="TRUE"]
+coef <- coef(models, 7)
+paste(names(coef)[2: length(mod)], collapse= " + ")
+mod <- res$which[7,]
 names(mod)
 paste(names(mod), collapse= "+")
 plot(models, scale = "adjr2", main = "Adjusted R^2")
@@ -167,3 +168,28 @@ m_lasso
 # believe the relationships you found?
 study2 <- read.csv("~/36707/data/study-2.csv")
 head(study2)
+colnames(study2)[12] <- "kalimba"
+
+##########  PREDICTIONS 
+test.mat <- model.matrix(fmla, study2)[,-1]
+## stepwise
+coefi= coef(step_m, id = 7)
+
+## best subset
+coef <- coef(models, 7)
+pred_subs <-test.mat[,names(coef)]%*%coef
+
+pred=test.mat[,names(coef)[2:8]]%*%coef[2:8] + coef[1]
+mean((study2$feelold- pred)^2) 
+## lasso
+pred_lasso <-predict(lasso_fit, newx = test.mat, s=cvfit$lambda.min, type="response")
+mean((study2$feelold- pred_lasso)^2) # 0.6011047
+
+coefi= coef(step_m, id = 7)
+names(coefi)[7] <- "bird:condcontrol"
+names(coefi)[8] <- "bird:condpotato"
+names(coefi)[1] <- "condcontrol"
+pred=test.mat[,names(coefi)[2:9]]%*%coefi[2:9]+coefi[1]
+mean((study2$feelold- pred)^2) 
+
+predict(step_m, newdata = study2)
