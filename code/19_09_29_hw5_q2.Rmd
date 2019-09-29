@@ -1,0 +1,64 @@
+---
+title: "hw5_q2"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, width.cutoff=60, fig.pos = 'H')
+set.seed(1234)
+```
+
+## a) SATMTMID vs MD_EARN_WNE_P10
+s
+Look for outliers.
+Find these outliers in the data and look up their name (INSTNM). Can you explain the
+outliers?
+
+```{r cars}
+summary(cars)
+```
+
+## b) median earnings and SAT math scores.
+
+Suppose we want to model the relationship between median earnings and SAT math
+scores. Fit an ordinary linear model, plot the residuals, and look at diagnostics. Does
+the relationship seem to be linear? Are there any problems with the fit?
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+(c) Let’s consider some possible nonlinear fits. First, fit a second-order polynomial (using
+poly() in lm()). Is there evidence this helps the model fit over a line? What about a
+third-order polynomial? Use partial F tests (with anova()) to compare the models, and
+explain your conclusions.
+
+(d) Whether or not the F tests suggested the polynomials help, you can also compare the pre-
+dictive performance of each model. Sometimes variables that are not statistically signifi-
+cant can improve predictive performance. Use cross-validation to estimate the squared-
+error loss of each of your models. (Fit a new model to each training set.) Compare the
+
+results to what you got using F tests. Why could the results differ?
+
+(For K-fold cross-validation, the modelr package has a crossv_kfold function that auto-
+matically divides your data up into folds, and gives you lists of the training and test sets.
+
+(e) Fit a smoothing spline to the data using smooth.spline. Fit three different spline models:
+
+• One where you let R use its automatic cross-validation to pick the smoothing param-
+eter, spar
+
+• One where you pick spar to be half as big as R picked
+• One where you pick spar to be halfway between R’s pick and 1
+Plot predictions from the three models on one scatterplot and compare them visually.
+(See the class R code.)
+(f) Use cross-validation to estimate the error of the three models. That means:
+1. Fix the spar values at those you used in the previous part.
+2. Split the data into folds.
+3. Fit smooth.spline with your chosen spar on the training data, then predict it on
+the test data and get the squared-error loss.
+4. Repeat for each fold.
+Compare the average errors of the three. Which is worse, too much bias or too much
+variance? (Which fit corresponds to high bias, and which corresponds to high variance?)
