@@ -1,0 +1,83 @@
+---
+title: "Polynomials and Splines"
+author: "Alex Reinhart"
+date: "9/25/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Polynomials
+
+R provides the `poly` function to calculate a polynomial basis expansion of a variable. For example, the `cars` dataset records the speed of cars (from 1930!) and how far they take to stop; we'd expect the relationship to be quadratic, because the kinetic energy of a car goes up with the *square* of its speed.
+
+```{r}
+fit <- lm(dist ~ poly(speed, 2), data=cars)
+fit
+
+speeds <- seq(0, 25, length.out=200)
+plot(cars, xlab="Speed (mph)", ylab="Stopping distance")
+lines(speeds, predict(fit, data.frame(speed=speeds)))
+```
+
+Notice that `poly` does not simply generate a matrix X whose first column is the variable, second column is the variable squared, third column is the variable cubed, and so on. Instead it takes the space spanned by those columns and finds an *orthogonal* basis. This means:
+
+```{r}
+vcov(fit)
+```
+
+Notice that the covariance between the first and second polynomial coefficients is essentially 0, to within floating-point precision.
+
+This is useful now because it improves the numerical precision of the estimates; back before computers, it was useful because each column's coefficient could be estimated separately from the others, without having to invert the entire matrix X.
+
+## Regression splines
+
+The `splines` package, included with R, includes functions for the B-spline basis. This is a regression spline with particular bases that are easy to calculate.
+
+```{r}
+library(splines)
+knots <- quantile(cars$speed, probs=c(0.25, 0.5, 0.75))
+bs.fit <- lm(dist ~ bs(speed, knots=knots, degree=3), data=cars)
+bs.fit
+
+plot(cars, xlab="Speed (mph)", ylab="Stopping distance")
+rug(knots)
+lines(speeds, predict(fit, data.frame(speed=speeds)))
+lines(speeds, predict(bs.fit, data.frame(speed=speeds)), col=2)
+```
+
+We can also do the same thing with natural splines, where the splines outside the last knots are linear instead of cubic. Notice that `ns` uses cubic splines for the interior, instead of taking a `degree` argument.
+
+```{r}
+ns.fit <- lm(dist ~ ns(speed, knots=knots), data=cars)
+ns.fit
+
+plot(cars, xlab="Speed (mph)", ylab="Stopping distance")
+rug(knots)
+lines(speeds, predict(fit, data.frame(speed=speeds)))
+lines(speeds, predict(bs.fit, data.frame(speed=speeds)), col=2)
+lines(speeds, predict(ns.fit, data.frame(speed=speeds)), col=3)
+```
+
+## Smoothing splines
+
+The R built-in function `smooth.spline` fits a smoothing spline to data. Unlike the regression spline functions, it is *not* used with `lm`, because smoothing splines are not fit with ordinary least squares. As we discussed, smoothing splines are fit with a variant of ridge regression to control the amount of smoothing.
+
+`smooth.spline` will, by default, automatically calculate the optimal amount of smoothing by using cross-validation, but you can also choose the amount of cross-validation yourself.
+
+```{r}
+sm.fit <- smooth.spline(cars$speed, cars$dist)
+sm.fit
+
+plot(cars, xlab="Speed (mph)", ylab="Stopping distance")
+lines(speeds, predict(sm.fit, speeds)$y)
+
+less.sm.fit <- smooth.spline(cars$speed, cars$dist, spar=0.1)
+lines(speeds, predict(less.sm.fit, speeds)$y, col=2)
+```
+
+(Annoyingly, `predict.smooth.spline` returns a list with `$x` and `$y`, so you have to use it differently than `predict.lm`.)
+
+Notice that `smooth.spline` reports `lambda`, the penalty parameter it chose. Because the meaning of this parameter depends on the scale of the data -- if you rescale X, you change the second derivatives -- R prefers the smooothing parameter `spar`, which is a rescaled version. If you want to choose the amount of smoothing yourself, you can set `spar` to be some value, typically between 0 and 1.

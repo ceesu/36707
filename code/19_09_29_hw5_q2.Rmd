@@ -6,36 +6,100 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, width.cutoff=60, fig.pos = 'H')
 set.seed(1234)
+
+# libraries
+library(tidyverse)
+library(lattice)
+library(dagitty)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library("ggpubr")
+
+# http://rosmarus.refsmmat.com/datasets/datasets/college-scorecard/
+data <- read.csv("~/36707/data/Most-Recent-Cohorts-Scorecard-Elements.csv",
+                 na.strings = c("PrivacySuppressed", "NULL"), sep = ",")
+
+# Note that missing data is marked with the string PrivacySuppressed.
+# You should filter out colleges with missing data in the columns we will use for this problem.
+
 ```
 
 ## a) SATMTMID vs MD_EARN_WNE_P10
-s
-Look for outliers.
-Find these outliers in the data and look up their name (INSTNM). Can you explain the
-outliers?
+Here we plot median SAT scores versus the median earnings after 10 years. First we removed the rows with missing values. Based on the line of best fit, outliers appeared to have earnings greater than 75000 (red points) and the institutions were printed out. It seems the outliers belong to graduates of medical schools or prestigious schools who can earn more than average. I removed these outliers.
 
-```{r cars}
-summary(cars)
+```{r outliers echo=FALSE} 
+# filter out missing data
+filt <- data %>% 
+  select(SATMTMID, MD_EARN_WNE_P10, INSTNM) %>%
+  na.omit
+#plot
+# ggplot(filt, aes(x = SATMTMID, y = MD_EARN_WNE_P10))+ 
+#   geom_point()+theme(axis.text.x=element_blank(), 
+#                      axis.text.y=element_blank())
+ggscatter(filt, x = "SATMTMID", y = "MD_EARN_WNE_P10", #xlab = FALSE, ylab = FALSE,
+               cor.coef = TRUE,  add = "reg.line", cor.method = "pearson")+
+  geom_point(size=2,color = ifelse(filt$MD_EARN_WNE_P10 > 75000, "red", "blue"))
+filt[filt$MD_EARN_WNE_P10 > 75000,]
 ```
 
-## b) median earnings and SAT math scores.
+## b) median earnings and SAT math scores
 
-Suppose we want to model the relationship between median earnings and SAT math
-scores. Fit an ordinary linear model, plot the residuals, and look at diagnostics. Does
-the relationship seem to be linear? Are there any problems with the fit?
+Here we fit an ordinary linear model of median earnings vs median SAT math scores. The R squared values and diagnostic plots suggest the fit is not very linear.
+* The residuals vs fitted plot shows residuals have a downward trend rather than being equally spread relative to the fitted values.
+* the QQ plot has many points which are not well aligned on the y=x line indicating some residuals are not normally distributed.
+* the plot of residuals vs. leverage shows 
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>% 
+  select(SATMTMID, MD_EARN_WNE_P10, INSTNM)  %>% na.omit()
+   
+mod <- lm(MD_EARN_WNE_P10 ~ SATMTMID, data = filt_data)
+summary(mod)
+
+# plot residuals and diagnostics
+par(mfrow = c(2, 2)) 
+plot(mod)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## c) Nonlinear fits
 
-(c) Let’s consider some possible nonlinear fits. First, fit a second-order polynomial (using
-poly() in lm()). Is there evidence this helps the model fit over a line? What about a
-third-order polynomial? Use partial F tests (with anova()) to compare the models, and
-explain your conclusions.
+We fit a second-order and third-order polynomial instead and find that neither of these provide a statistically significant improvement over the original linear model by partial F test. The diagnostic plots also do not show many changes. 
 
-(d) Whether or not the F tests suggested the polynomials help, you can also compare the pre-
+```{r nonlinear}
+filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>% 
+  select(SATMTMID, MD_EARN_WNE_P10, INSTNM) %>% na.omit()
+   
+mod2 <- lm(MD_EARN_WNE_P10 ~ poly(SATMTMID, 2), data = filt_data)
+summary(mod2)
+
+mod3 <- lm(MD_EARN_WNE_P10 ~ poly(SATMTMID, 3), data = filt_data)
+summary(mod3)
+# plot residuals and diagnostics
+par(mfrow = c(2, 2)) 
+plot(mod3)
+
+# Use partial F tests to compare the models
+anova(mod, mod2)
+anova(mod, mod3)
+
+```
+
+## d) Cross validation 
+
+```{r cv}
+library(modelr)
+knots <- quantile(cars$speed, probs=c(0.25, 0.5, 0.75))
+bs.fit <- lm(dist ~ bs(speed, knots=knots, degree=3), data=cars)
+bs.fit
+
+plot(cars, xlab="Speed (mph)", ylab="Stopping distance")
+rug(knots)
+lines(speeds, predict(fit, data.frame(speed=speeds)))
+lines(speeds, predict(bs.fit, data.frame(speed=speeds)), col=2)
+```
+
+Whether or not the F tests suggested the polynomials help, you can also compare the pre-
 dictive performance of each model. Sometimes variables that are not statistically signifi-
 cant can improve predictive performance. Use cross-validation to estimate the squared-
 error loss of each of your models. (Fit a new model to each training set.) Compare the
@@ -45,13 +109,27 @@ results to what you got using F tests. Why could the results differ?
 (For K-fold cross-validation, the modelr package has a crossv_kfold function that auto-
 matically divides your data up into folds, and gives you lists of the training and test sets.
 
-(e) Fit a smoothing spline to the data using smooth.spline. Fit three different spline models:
+## e) Fit a smoothing spline 
 
-• One where you let R use its automatic cross-validation to pick the smoothing param-
-eter, spar
+We compared the three different spline models:
+* cv.fit: spar picked by automatic cross-validation
+* half_cv.fit: spar set to be half as big as R picked
+* half.fit: spar set to be halfway between cv.fit and 1
 
-• One where you pick spar to be half as big as R picked
-• One where you pick spar to be halfway between R’s pick and 1
+```{r splines}
+library(splines)
+# fit the splines
+cv.fit <- smooth.spline(cars$speed, cars$dist, spar=0.1)
+half_cv.fit <- smooth.spline(cars$speed, cars$dist, spar=0.1)
+half.fit <- smooth.spline(cars$speed, cars$dist, spar=0.1)
+
+plot(cars, xlab="Speed (mph)", ylab="Stopping distance")
+rug(knots)
+lines(speeds, predict(fit, data.frame(speed=speeds)))
+lines(speeds, predict(bs.fit, data.frame(speed=speeds)), col=2)
+```
+
+
 Plot predictions from the three models on one scatterplot and compare them visually.
 (See the class R code.)
 (f) Use cross-validation to estimate the error of the three models. That means:
