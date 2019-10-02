@@ -1,5 +1,6 @@
 ---
 title: "hw5_q2"
+date: "10/02/2019"
 output: pdf_document
 ---
 
@@ -25,10 +26,11 @@ data <- read.csv("~/36707/data/Most-Recent-Cohorts-Scorecard-Elements.csv",
 
 ```
 
-## a) SATMTMID vs MD_EARN_WNE_P10
-Here we plot median SAT scores versus the median earnings after 10 years which has an approximately linear relationship (r^2 > 0.6). First we removed the rows with missing values. Based on the line of best fit, outliers appeared to have earnings greater than 75000 (red points). It seems the outliers belong to graduates of medical schools or prestigious schools who can earn more than average (printed below). I removed these outliers.
+## a) median SAT scores versus the median earnings after 10 years
 
-```{r outlier} 
+Here we scatterplot the approximately linear relationship (r^2 > 0.6) between these variables. First we removed the rows with missing values. Based on the line of best fit, outliers appeared to have earnings greater than 75000 (red points). It seems the outliers belong to graduates of medical schools or prestigious schools who can earn more than average (printed below). I removed these outliers.
+
+```{r outlier, fig.width=6, fig.height=4} 
 # filter out missing data
 filt <- data %>% 
   select(SATMTMID, MD_EARN_WNE_P10, INSTNM) %>%
@@ -41,13 +43,13 @@ filt[filt$MD_EARN_WNE_P10 > 75000,"INSTNM"]
 
 ## b) median earnings and SAT math scores
 
-Here we fit an ordinary linear model of median earnings vs median SAT math scores. The R squared values and diagnostic plots suggest the fit is not very linear.
+Here we fit an ordinary linear model of median earnings vs median SAT math scores. The diagnostic plots suggest the fit is not very linear:
 
 * The residuals vs fitted plot shows residuals have a downward trend rather than being equally spread relative to the fitted values.
 * the QQ plot has many points which are not well aligned on the y=x line indicating some residuals are not normally distributed.
 * the plot of residuals vs. leverage shows a couple of potentially problematic outliers with high residuals and/or leverage, lying close to the Cook's distance curves.
 
-Overall the model relationship is not very linear (Adjusted R-squared of 0.1097) and the diagnostic plots show some problems with the fit.
+Overall the model relationship is not very linear (Adjusted R-squared less than 0.2) and the diagnostic plots show some problems with the fit.
 ```{r pressure, echo=FALSE}
 # follow https://data.library.virginia.edu/diagnostic-plots/
 filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>% 
@@ -63,7 +65,7 @@ plot(mod)
 
 ## c) Nonlinear fits
 
-We fit a second-order and third-order polynomial instead and find that neither of these provide a statistically significant improvement over the original first order linear model by partial F test (no significant terms at p < 0.05). The diagnostic plots also do not show improvements from previous ones. For example the third order polynomial diagnostic plots shown below even see the appearance of an outlier that has moved further outside of the Cook's distance lines. This suggests the nonlinear fits are comparable to the linear fit.
+We fit a second-order and third-order polynomial here and find that neither of these provide a statistically significant improvement over the original first order linear model by partial F test (no significant terms at p < 0.05). The diagnostic plots also do not show improvements from previous ones. For example the third order polynomial diagnostic plot of residuals versus leverage (shown below) even see the appearance of an outlier that has moved further outside of the Cook's distance lines. This suggests the nonlinear fits are comparable to the linear fit.
 
 ```{r nonlinear}
 filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>% 
@@ -87,20 +89,16 @@ anova(mod, mod3)
 
 ```{r cv}
 library(modelr)
+cv <- crossv_kfold(filt_data)
 
-folds <- cut(seq(1,nrow(filt_data)),breaks=5,labels=FALSE)
-
-testIndexes <- which(folds==i,arr.ind=TRUE)
-testData <- filt_data[testIndexes, 1:2]
-trainData <- filt_data[-testIndexes, 1:2]
 model1 <- map(cv$train, ~lm(MD_EARN_WNE_P10 ~ SATMTMID, data =.))
 model2 <- map(cv$train, ~lm(MD_EARN_WNE_P10 ~ poly(SATMTMID, 2), data =.))
 model3 <- map(cv$train, ~lm(MD_EARN_WNE_P10 ~ poly(SATMTMID, 3), data =.))
 
 # Use cross-validation to estimate the squared-error loss of each of your models.
-errs1 <- map2_dbl(model1, testData, mse)
-errs2 <- map2_dbl(model2, testData, mse)
-errs3 <- map2_dbl(model3, testData, mse)
+errs1 <- map2_dbl(model1, cv$test, mse)
+errs2 <- map2_dbl(model2, cv$test, mse)
+errs3 <- map2_dbl(model3, cv$test, mse)
 
 # print mean mse
 mean(as.numeric(errs1))
@@ -126,8 +124,6 @@ For the same model as above we compared the following three spline models:
 * cv.fit: spar picked by automatic cross-validation
 * half_cv.fit: spar set to be half as big as R picked
 * half.fit: spar set to be halfway between cv.fit and 1
-
-Whereas half.fit and cv.fit are very similar, half_cv.fit is a less linear model.
 
 ```{r splines}
 library(splines)
@@ -156,11 +152,13 @@ legend(x= "topright", legend=c("cv.fit", "half_cv.fit", "half.fit"),
        col=c("red", "blue", "brown"), lty=1:2, cex=0.8)
 ```
 
+It's clear that whereas half.fit and cv.fit are very similar, half_cv.fit is a less linear model with higher variance.
+
 ## (f) Use cross-validation to estimate the error of the three splines. 
 
- Which is worse, too much bias or too much
-variance? (Which fit corresponds to high bias, and which corresponds to high variance?)
+Which is worse, too much bias or too much variance? (Which fit corresponds to high bias, and which corresponds to high variance?)
 
+It seems that high bias wins over high variance in this situation, since the average mse of the half_cv spline (which has the smallest spar and higher variance) is the largest. 
 
 ```{r splines_cv}
 library(modelr)
