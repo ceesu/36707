@@ -48,9 +48,10 @@ filt[filt$MD_EARN_WNE_P10 > 75000,]
 Here we fit an ordinary linear model of median earnings vs median SAT math scores. The R squared values and diagnostic plots suggest the fit is not very linear.
 * The residuals vs fitted plot shows residuals have a downward trend rather than being equally spread relative to the fitted values.
 * the QQ plot has many points which are not well aligned on the y=x line indicating some residuals are not normally distributed.
-* the plot of residuals vs. leverage shows 
+* the plot of residuals vs. leverage shows a couple of potentially problematic outliers w
 
 ```{r pressure, echo=FALSE}
+# follow https://data.library.virginia.edu/diagnostic-plots/
 filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>% 
   select(SATMTMID, MD_EARN_WNE_P10, INSTNM)  %>% na.omit()
    
@@ -82,28 +83,28 @@ plot(mod3)
 # Use partial F tests to compare the models
 anova(mod, mod2)
 anova(mod, mod3)
-
 ```
 
 ## d) Cross validation 
 
 ```{r cv}
 library(modelr)
-knots <- quantile(cars$speed, probs=c(0.25, 0.5, 0.75))
-bs.fit <- lm(dist ~ bs(speed, knots=knots, degree=3), data=cars)
-bs.fit
+cv <- crossv_kfold(filt_data)
+model1 <- map(cv$train, ~lm(MD_EARN_WNE_P10 ~ SATMTMID, data =.))
+model2 <- map(cv$train, ~lm(MD_EARN_WNE_P10 ~ poly(SATMTMID, 2), data =.))
+model3 <- map(cv$train, ~lm(MD_EARN_WNE_P10 ~ poly(SATMTMID, 3), data =.))
 
-plot(cars, xlab="Speed (mph)", ylab="Stopping distance")
-rug(knots)
-lines(speeds, predict(fit, data.frame(speed=speeds)))
-lines(speeds, predict(bs.fit, data.frame(speed=speeds)), col=2)
+# Use cross-validation to estimate the squared-error loss of each of your models.
+errs1 <- map2_dbl(model1, cv$test, mse)
+errs2 <- map2_dbl(model2, cv$test, mse)
+errs3 <- map2_dbl(model3, cv$test, mse)
+hist(errs1)
 ```
 
 Whether or not the F tests suggested the polynomials help, you can also compare the pre-
 dictive performance of each model. Sometimes variables that are not statistically signifi-
 cant can improve predictive performance. Use cross-validation to estimate the squared-
 error loss of each of your models. (Fit a new model to each training set.) Compare the
-
 results to what you got using F tests. Why could the results differ?
 
 (For K-fold cross-validation, the modelr package has a crossv_kfold function that auto-
@@ -111,28 +112,42 @@ matically divides your data up into folds, and gives you lists of the training a
 
 ## e) Fit a smoothing spline 
 
-We compared the three different spline models:
+For the same model as above we compared the following three spline models:
 * cv.fit: spar picked by automatic cross-validation
 * half_cv.fit: spar set to be half as big as R picked
 * half.fit: spar set to be halfway between cv.fit and 1
+Whereas half.fit and cv.fit are very similar, half_cv.fit
 
 ```{r splines}
 library(splines)
 # fit the splines
-cv.fit <- smooth.spline(cars$speed, cars$dist, spar=0.1)
-half_cv.fit <- smooth.spline(cars$speed, cars$dist, spar=0.1)
-half.fit <- smooth.spline(cars$speed, cars$dist, spar=0.1)
+cv.fit <- smooth.spline(filt_data$SATMTMID,
+                        filt_data$MD_EARN_WNE_P10)
+spar_fit <- cv.fit$spar #spar= 1.499929
+spar_fit 
+half_cv.fit <- smooth.spline(filt_data$SATMTMID,
+                             filt_data$MD_EARN_WNE_P10,
+                             spar = spar_fit/2.0)
+half.fit <- smooth.spline(filt_data$SATMTMID,
+                          filt_data$MD_EARN_WNE_P10,
+                          spar = (spar_fit-1.0)/2.0 + 1.0)
 
-plot(cars, xlab="Speed (mph)", ylab="Stopping distance")
-rug(knots)
-lines(speeds, predict(fit, data.frame(speed=speeds)))
-lines(speeds, predict(bs.fit, data.frame(speed=speeds)), col=2)
+# Plot predictions from the three models on one scatterplot and compare them visually.
+# sat math scores can range from 200 to 800
+satmids <- seq(200, 800, length.out=100)
+
+plot(filt_data[,1:2], xlab="Midpoint of SAT math scores", 
+     ylab="Median earnings (dollars) 10 years after entry")
+lines(satmids, predict(cv.fit, satmids)$y, col="red")
+lines(satmids, predict(half_cv.fit, satmids)$y, col="blue")
+lines(satmids, predict(half.fit, satmids)$y, col="brown")
+legend(x= "topright", legend=c("cv.fit", "half_cv.fit", "half.fit"),
+       col=c("red", "blue", "brown"), lty=1:2, cex=0.8)
 ```
 
+## (f) Use cross-validation to estimate the error of the three splines. 
 
-Plot predictions from the three models on one scatterplot and compare them visually.
-(See the class R code.)
-(f) Use cross-validation to estimate the error of the three models. That means:
+That means:
 1. Fix the spar values at those you used in the previous part.
 2. Split the data into folds.
 3. Fit smooth.spline with your chosen spar on the training data, then predict it on
@@ -140,3 +155,20 @@ the test data and get the squared-error loss.
 4. Repeat for each fold.
 Compare the average errors of the three. Which is worse, too much bias or too much
 variance? (Which fit corresponds to high bias, and which corresponds to high variance?)
+
+
+```{r splines}
+library(modelr)
+cv <- crossv_kfold(filt_data)
+for(split in cv){
+  # get model on specific train fold
+  
+  # extract model performance on test fold
+  
+  # get the mse 
+  print(i)
+  }
+# Compare the average errors of the three. 
+
+cv.fit <- map(cv$train, ~cv.fit)
+```
