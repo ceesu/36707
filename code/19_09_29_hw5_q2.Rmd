@@ -28,7 +28,7 @@ data <- read.csv("~/36707/data/Most-Recent-Cohorts-Scorecard-Elements.csv",
 
 ## a) median SAT scores versus the median earnings after 10 years
 
-Here we scatterplot the approximately linear relationship (r^2 > 0.6) between these variables. First we removed the rows with missing values. Based on the line of best fit, outliers appeared to have earnings greater than 75000 (red points). It seems the outliers belong to graduates of medical schools or prestigious schools who can earn more than average (printed below). I removed these outliers.
+Here we scatterplot the approximately linear relationship between these variables. First we removed the rows with missing values. Based on the line of best fit, there appear to be a number of high earnings outliers (red points). It seems the outliers belong to graduates of medical schools or prestigious schools who can earn more than average (printed below), suggesting the presence of other covariates responsible for the earnings seen here. To try to avoid these effects we removed outliers with earnings greater than 75000.
 
 ```{r outlier, fig.width=6, fig.height=4} 
 # filter out missing data
@@ -49,7 +49,7 @@ Here we fit an ordinary linear model of median earnings vs median SAT math score
 * the QQ plot has many points which are not well aligned on the y=x line indicating some residuals are not normally distributed.
 * the plot of residuals vs. leverage shows a couple of potentially problematic outliers with high residuals and/or leverage, lying close to the Cook's distance curves.
 
-Overall the model relationship is not very linear (Adjusted R-squared less than 0.2) and the diagnostic plots show some problems with the fit.
+Overall the model relationship is not very linear (adjusted R-squared less than 0.2) and the diagnostic plots show some problems with the fit.
 ```{r pressure, echo=FALSE}
 # follow https://data.library.virginia.edu/diagnostic-plots/
 filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>% 
@@ -65,7 +65,7 @@ plot(mod)
 
 ## c) Nonlinear fits
 
-We fit a second-order and third-order polynomial here and find that neither of these provide a statistically significant improvement over the original first order linear model by partial F test (no significant terms at p < 0.05). The diagnostic plots also do not show improvements from previous ones. For example the third order polynomial diagnostic plot of residuals versus leverage (shown below) even see the appearance of an outlier that has moved further outside of the Cook's distance lines. This suggests the nonlinear fits are comparable to the linear fit.
+We fit a second-order and third-order polynomial here and find that neither of these provide a statistically significant improvement over the original first order linear model by partial F test (no significant terms at p < 0.05). The diagnostic plots also do not show improvements from previous ones. For example the third order polynomial diagnostic plot of residuals versus leverage (shown below) even see the appearance of an outlier that has moved further outside of the Cook's distance lines (labelled by 1550). This suggests the nonlinear fits are comparable to the linear fit.
 
 ```{r nonlinear}
 filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>% 
@@ -105,17 +105,9 @@ mean(as.numeric(errs1))
 mean(as.numeric(errs2))
 mean(as.numeric(errs3))
 ```
+We checked the cross validation MSE and found that the predictive performance of the original linear model is better than the performance of the order 2 polynomial, which is in turn better than performance of the order 3 polynomial. This is different from our conclusion from the F tests since it suggests the simpler models outperform teh more complex ones.
 
-Whether or not the F tests suggested the polynomials help, you can also compare the pre-
-dictive performance of each model. Sometimes variables that are not statistically signifi-
-cant can improve predictive performance. Use cross-validation to estimate the squared-
-error loss of each of your models. (Fit a new model to each training set.) Compare the
-results to what you got using F tests. Why could the results differ?
-
-(For K-fold cross-validation, the modelr package has a crossv_kfold function that auto-
-matically divides your data up into folds, and gives you lists of the training and test sets.
-
-We checked the cross validation RSS and found that the predictive performance of the original linear model is better than the performance of the order 2 polynomial, which is in turn better than performance of the order 3 polynomial. This is different from our conclusion from the F tests.
+The conclusion can be different because the F test tells us that the hypothesis that the more complex model performs better cannot be rejected; whereas cross validation mean squared error characterizes the predictive performance of the model dependent on the training and test data we have.
 
 ## e) Fit a smoothing spline 
 
@@ -152,13 +144,11 @@ legend(x= "topright", legend=c("cv.fit", "half_cv.fit", "half.fit"),
        col=c("red", "blue", "brown"), lty=1:2, cex=0.8)
 ```
 
-It's clear that whereas half.fit and cv.fit are very similar, half_cv.fit is a less linear model with higher variance.
+From a visual comparison it's clear that whereas half.fit and cv.fit are very similar straight line models, half_cv.fit is a more fitted model with higher variance.
 
 ## (f) Use cross-validation to estimate the error of the three splines. 
 
-Which is worse, too much bias or too much variance? (Which fit corresponds to high bias, and which corresponds to high variance?)
-
-It seems that high bias wins over high variance in this situation, since the average mse of the half_cv spline (which has the smallest spar and higher variance) is the largest. 
+It seems that based upon the MSE values seen from the three modes, high bias wins over high variance in cross validation performance. This is seen because the average mse of the half_cv spline (which has the smallest spar and higher variance than the other two models) is the largest.
 
 ```{r splines_cv}
 library(modelr)
