@@ -226,9 +226,8 @@ legend("topright",legend=c("Training","Validation"),col=c("blue","black"),pch=19
 The training error decreases to zero when we get past about 10 terms. 
 
 ```{r}
-set.seed(11)
+set.seed(12)
 folds=sample(rep(1:10,length=nrow(team_dat)))
-folds
 
 predict.regsubsets=function(object,newdata,id,...){
   form=as.formula(object$call[[2]])
@@ -237,13 +236,13 @@ predict.regsubsets=function(object,newdata,id,...){
   mat[,names(coefi)]%*%coefi
 }
 
-cv.errors=matrix(NA,10,36)
+cv.errors=matrix(NA,10,11)
 for(k in 1:10){
   # best fit on the train data
-  best.fit=regsubsets(final.performance~.^2.,data=team_dat[folds!=k,],nvmax=40,method="forward")
+  best.fit=regsubsets(final.performance~. + avg.log.testosterone:diversity.score + diversity.score:avg.log.cortisol, data=team_dat[folds!=k, vars],nvmax=40,method="exhaustive")
   # performance on the test data
-  for(i in 1:36){
-    pred=predict(best.fit,team_dat[folds==k,],id=i)
+  for(i in 1:10){
+    pred=predict(best.fit,team_dat[folds==k,vars],id=i)
     cv.errors[k,i]=mean((team_dat$final.performance[folds==k]-pred)^2)
   }
 }
@@ -254,14 +253,20 @@ plot(rmse.cv,pch=19,type="b")
 
 
 ```{r}
-library(leaps)
-plot(regfit.fwd, scale = "adjr2", main = "Adjusted R^2")
-#coef(regfit.fwd,4)
-#coef(regfit.fwd,5)
-#coef(regfit.fwd,6)
-
-coef(regfit.fwd,10)
+best.fit=regsubsets(final.performance~. + avg.log.testosterone:diversity.score + diversity.score:avg.log.cortisol, data=team_dat[,vars],nvmax=8,method="exhaustive")
+coef(best.fit, 8)
+coef(best.fit,5)
 ```
+
+```{r}
+model <- lm(final.performance~ team.size+time.of.day+diversity.score+proportion.females+avg.log.testosterone+avg.log.cortisol+diversity.score:avg.log.testosterone+diversity.score:avg.log.cortisol, data = team_dat)
+summary(model)
+
+model <- lm(final.performance~ team.size+time.of.day+diversity.score+proportion.females+avg.log.testosterone+avg.log.cortisol+diversity.score:avg.log.testosterone+diversity.score:avg.log.cortisol, data = team_dat)
+summary(model)
+```
+
+
 
 
 ```{r, fig.width=8, fig.height=4, warning=FALSE, echo=FALSE, fig.cap="."}
