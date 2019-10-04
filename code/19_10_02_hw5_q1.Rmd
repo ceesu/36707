@@ -3,7 +3,7 @@ title: "Testosterone, diversity, and group project performance"
 author: "Cathy Su"
 date: "9/10/2019"
 output: 
-  pdf_document:
+  html_document:
     highlight: tango
     fig_caption: yes
 bibliography: hw3.bib
