@@ -138,9 +138,9 @@ We are interested in doing our analysis at the group level therefore we needed t
 
 Additionally, we have calculated group diversity score as the number of unique gender-ethnicity-country combinations present in the group. Lastly we calculate proportion of females in the group as the number of females divided by group size. 
 
-### Model fitting and model selection
+### Model selection
 
-We fit linear regression models and plot their fit using the base lm() function in R. For model selection we split the group level data 1:5 into a training and test set. Best subsets regression was performed on the training set with the leaps function regsubsets and predictions were assessed on the test set.
+For model selection we split the group level data 1:10  into a training and test set. Best subsets regression was performed on the training set with the leaps function regsubsets and predictions were assessed on the test set.
 
 ## Exploratory Data Analysis & Data Summary
 
@@ -193,16 +193,18 @@ The results discussed by the original study [@Akinola2018] include that:
 
 ### Model selection 
 
-Since the authors studied 2-way interactions, to choose the terms in the model we first performed model selection using best subsets on the training data.
+Since the authors studied 2-way interactions, to choose the terms in the model we first performed model selection using best subsets and cross validation. We start off with all of the group level variables as depicted in Figure \ref{fig:pairs}, adding on all of the two way interaction terms such as diversity.score:avg.log.testosterone to test these as well. To pick the number of terms we should 
 
 ```{r}
 # https://rpubs.com/ssharma6/264822
+# https://stats.stackexchange.com/questions/138458/proper-variable-selection-use-only-training-data-or-full-data
+# http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
 library(leaps)
 
-set.seed(1)
+set.seed(6)
 ntot = nrow(team_dat)
 train=sample(seq(ntot),ntot*0.8,replace=FALSE)
-regfit.fwd=regsubsets(final.performance~.^2,data=team_dat[train,vars],nvmax=40,
+regfit.fwd=regsubsets(final.performance~ . + ,data=team_dat[train,vars],nvmax=40,
                       method = "exhaustive")
 
 plot(regfit.fwd,scale="Cp")
@@ -212,7 +214,7 @@ It seems that we get some overfitting with Mallows' CP
 ```{r}
 #plot(regfit.fwd,scale="Cp")
 val.errors=rep(NA,36)
-x.test=model.matrix(final.performance~.^2, data=team_dat[-train,vars])# notice the -index!
+x.test=model.matrix(final.performance~., data=team_dat[-train,vars])# notice the -index!
 for(i in 1:36){
   coefi=coef(regfit.fwd,id=i)
   pred=x.test[,names(coefi)]%*%coefi
@@ -223,32 +225,52 @@ points(sqrt(regfit.fwd$rss[-1]/length(train)),col="blue",pch=19,type="b")
 legend("topright",legend=c("Training","Validation"),col=c("blue","black"),pch=19)
 ```
 
-The training error decreases to zero when we get past about 10 terms. 
+The training error decreases to zero when we get past about 10 terms. But the validation error seems lowest around 4 terms. Therefore we try to obtain the 
+
+```{r cv}
+k = 10        # number of folds
+set.seed(1)   # set the random seed so we all get the same results
+
+# Assign each observation to a single fold
+folds = sample(1:k, nrow(team_dat), replace = TRUE)
+
+# Create a matrix to store the results of our upcoming calculations
+cv_errors = matrix(NA, k, 19, dimnames = list(NULL, paste(1:)))
+
+# Outer loop iterates over all folds
+for(j in 1:k){
+    
+    # The perform best subset selection on the full dataset, minus the jth fold
+    best_fit = regsubsets(Salary~., data = Hitters[folds!=j,], nvmax=19)
+    
+    # Inner loop iterates over each size i
+    for(i in 1:19){
+        
+        # Predict the values of the current fold from the "best subset" model on i predictors
+        pred = predict(best_fit, Hitters[folds==j,], id=i)
+        
+        # Calculate the MSE, store it in the matrix we created above
+        cv_errors[j,i] = mean((Hitters$Salary[folds==j]-pred)^2)
+    }
+}
+
+# Take the mean of over all folds for each model size
+mean_cv_errors = apply(cv_errors, 2, mean)
+
+# Find the model size with the smallest cross-validation error
+min = which.min(mean_cv_errors)
+
+# Plot the cross-validation error for each model size, highlight the min
+plot(mean_cv_errors, type='b')
+points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
+
+```
+
 
 ```{r}
-set.seed(11)
-folds=sample(rep(1:10,length=nrow(team_dat)))
-folds
-
-predict.regsubsets=function(object,newdata,id,...){
-  form=as.formula(object$call[[2]])
-  mat=model.matrix(form,newdata)
-  coefi=coef(object,id=id)
-  mat[,names(coefi)]%*%coefi
-}
-
-cv.errors=matrix(NA,10,36)
-for(k in 1:10){
-  # best fit on the train data
-  best.fit=regsubsets(final.performance~.^2.,data=team_dat[folds!=k,],nvmax=40,method="forward")
-  # performance on the test data
-  for(i in 1:36){
-    pred=predict(best.fit,team_dat[folds==k,],id=i)
-    cv.errors[k,i]=mean((team_dat$final.performance[folds==k]-pred)^2)
-  }
-}
-rmse.cv=sqrt(apply(cv.errors,2,mean))
-plot(rmse.cv,pch=19,type="b")
+regfit_best = regsubsets(final.performance~.^2, data = team_dat[,vars], nvmax = 50)
+coef(regfit_best, 4)
+coef(regfit.fwd, 4)
 ```
 
 
