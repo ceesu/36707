@@ -56,7 +56,7 @@ filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>%
   select(SATMTMID, MD_EARN_WNE_P10, INSTNM)  %>% na.omit()
    
 mod <- lm(MD_EARN_WNE_P10 ~ SATMTMID, data = filt_data)
-summary(mod)
+kable(mod$coef, digits = c(3,3,3,4), format = 'markdown')
 
 # plot residuals and diagnostics
 par(mfrow = c(2, 2)) 
@@ -72,10 +72,10 @@ filt_data <- data[data$MD_EARN_WNE_P10 >75000,] %>%
   select(SATMTMID, MD_EARN_WNE_P10, INSTNM) %>% na.omit()
    
 mod2 <- lm(MD_EARN_WNE_P10 ~ poly(SATMTMID, 2), data = filt_data)
-summary(mod2)
+kable(mod2$coef, digits = c(3,3,3,4), format = 'markdown')
 
 mod3 <- lm(MD_EARN_WNE_P10 ~ poly(SATMTMID, 3), data = filt_data)
-summary(mod3)
+kable(mod3$coef, digits = c(3,3,3,4), format = 'markdown')
 # plot residuals and diagnostics
 par(mfrow = c(2, 2)) 
 plot(mod3)
