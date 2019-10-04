@@ -193,7 +193,10 @@ The results discussed by the original study [@Akinola2018] include that:
 
 ### Model selection 
 
-Since the authors studied 2-way interactions, to choose the terms in the model we first performed model selection using best subsets and cross validation. We start off with all of the group level variables as depicted in Figure \ref{fig:pairs}, adding on all of the two way interaction terms such as diversity.score:avg.log.testosterone to test these as well. To pick the number of terms we should 
+Since the authors studied 2-way interactions, to choose the terms in the model we first performed model selection using best subsets and cross validation. We start off with all of the group level variables as depicted in Figure \ref{fig:pairs}, adding based on the causal graph and the authors' work the following interaction terms:
+
+* diversity.score:avg.log.testosterone
+* diversity.score:avg.log.cortisol 
 
 ```{r}
 # https://rpubs.com/ssharma6/264822
@@ -214,18 +217,19 @@ It seems that we get some overfitting with Mallows' CP
 ```{r}
 #plot(regfit.fwd,scale="Cp")
 val.errors=rep(NA,36)
-x.test=model.matrix(final.performance~., data=team_dat[-train,vars])# notice the -index!
+x.test=model.matrix(final.performance~.^2, data=team_dat[-train,vars])# notice the -index!
 for(i in 1:36){
   coefi=coef(regfit.fwd,id=i)
   pred=x.test[,names(coefi)]%*%coefi
-  val.errors[i]=mean((team_dat$final.performance[-train]-pred)^2)
+  val.errors[i]=mean((team_dat[-train,"final.performance"]-pred)^2)
 }
 plot(sqrt(val.errors), ylab="Root MSE",pch=19,type="b")
 points(sqrt(regfit.fwd$rss[-1]/length(train)),col="blue",pch=19,type="b")
 legend("topright",legend=c("Training","Validation"),col=c("blue","black"),pch=19)
 ```
 
-The training error decreases to zero when we get past about 10 terms. But the validation error seems lowest around 4 terms. Therefore we try to obtain the 
+
+It seems validation error is lowest around 4 terms. Therefore we try to obtain the best four term model.
 
 ```{r cv}
 k = 10        # number of folds
@@ -268,7 +272,7 @@ points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
 
 
 ```{r}
-regfit_best = regsubsets(final.performance~.^2, data = team_dat[,vars], nvmax = 50)
+regfit_best = regsubsets(final.performance~.^2, data = team_dat[,vars], nvmax = 4)
 coef(regfit_best, 4)
 coef(regfit.fwd, 4)
 ```
