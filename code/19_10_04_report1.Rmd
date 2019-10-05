@@ -29,6 +29,8 @@ set.seed(1234)
 
 # http://jgscott.github.io/teaching/writeups/files/example_writeup1.pdf
 
+# http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
+
 # libraries
 library(tidyverse)
 library(lattice)

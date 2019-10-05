@@ -125,8 +125,7 @@ behaviour in individuals and is produced at a higher level in males than
 females, while cortisol is a hormone released during physical and
 psychological stress (Mehta and Prasad 2015). For healthy males between
 19 to 40 years, normal testosterone is known to fall within the 15.4 to
-13 nmol/L range (Kelsey et al. 2014). Healthy levels of hormones for men
-and women are given in Table, collected from (Matsuzaka et al. 2013)
+13 nmol/L range (Kelsey et al. 2014).
 
 In their work, (Akinola et al. 2018) collected both demographic data and
 hormone measurements from 370 MBA students organized into 74 groups who
@@ -305,37 +304,41 @@ To start we want to check the simplest assumptions from (Akinola et al.
 2018) that diversity score and testosterone do not significantly predict
 performance on their own. We use the F-test to compare this null
 hypothesis to the alternative hypothesis where the model only contains
-an intercept term (Table \ref{fig:model}).
+an intercept term (Table \ref{tab:Coefficients}).
 
 \begin{table}[!htbp] \centering 
-  \caption{} 
-  \label{} 
-\begin{tabular}{@{\extracolsep{5pt}}lcc} 
+  \caption{Coefficients of regression models studied} 
+  \label{tab:regression} 
+\small 
+\begin{tabular}{@{\extracolsep{1pt}}lccc} 
 \\[-1.8ex]\hline 
 \hline \\[-1.8ex] 
- & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
-\cline{2-3} 
-\\[-1.8ex] & \multicolumn{2}{c}{final.performance} \\ 
-\\[-1.8ex] & (1) & (2)\\ 
+ & \multicolumn{3}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-4} 
+\\[-1.8ex] & \multicolumn{3}{c}{final.performance} \\ 
+\\[-1.8ex] & \multicolumn{3}{c}{\textit{OLS}} \\ 
+\\[-1.8ex] & (1) & (2) & (3)\\ 
 \hline \\[-1.8ex] 
- Constant & $-$3.181 & $-$0.292 \\ 
-  & (1.910) & (0.614) \\ 
-  & & \\ 
- avg.log.testosterone & 0.703$^{*}$ &  \\ 
-  & (0.422) &  \\ 
-  & & \\ 
- diversity.score &  & 0.066 \\ 
-  &  & (0.136) \\ 
-  & & \\ 
-\hline \\[-1.8ex] 
-Observations & 74 & 74 \\ 
-R$^{2}$ & 0.037 & 0.003 \\ 
-Adjusted R$^{2}$ & 0.024 & $-$0.011 \\ 
-Residual Std. Error (df = 72) & 0.828 & 0.843 \\ 
-F Statistic (df = 1; 72) & 2.783$^{*}$ & 0.232 \\ 
+ Constant & $-$1.419 (5.169) & $-$48.224$^{***}$ (12.202) & $-$36.781$^{**}$ (15.778) \\ 
+  team.size & 0.220 (0.196) & 0.390$^{**}$ (0.179) & 0.305 (0.188) \\ 
+  time.of.day & 0.034 (0.057) & 0.061 (0.049) & 0.053 (0.051) \\ 
+  diversity.score & $-$0.037 (0.162) & 10.220$^{***}$ (2.496) & 9.342$^{***}$ (3.484) \\ 
+  proportion.females & $-$1.951 (1.463) & $-$0.910 (1.327) & $-$0.838 (1.354) \\ 
+  avg.log.testosterone & 0.419 (0.628) & 10.428$^{***}$ (2.475) & 8.472$^{***}$ (3.054) \\ 
+  avg.log.cortisol & 0.026 (0.279) &  & 1.398 (1.359) \\ 
+  avg.age & $-$0.037 (0.141) & $-$0.040 (0.125) & $-$0.024 (0.127) \\ 
+  age.variance & $-$0.012 (0.033) & 0.006 (0.030) & 0.008 (0.030) \\ 
+  diversity.score:avg.log.testosterone &  & $-$2.268$^{***}$ (0.551) & $-$2.202$^{***}$ (0.705) \\ 
+  diversity.score:avg.log.cortisol &  &  & 0.603 (0.898) \\ 
+  diversity.score:avg.log.testosterone:avg.log.cortisol &  &  & $-$0.204 (0.178) \\ 
+ \hline \\[-1.8ex] 
+Observations & 74 & 74 & 74 \\ 
+R$^{2}$ & 0.116 & 0.299 & 0.336 \\ 
+Adjusted R$^{2}$ & 0.008 & 0.213 & 0.218 \\ 
+Residual Std. Error & 0.835 (df = 65) & 0.744 (df = 65) & 0.741 (df = 62) \\ 
+F Statistic & 1.071 (df = 8; 65) & 3.468$^{***}$ (df = 8; 65) & 2.852$^{***}$ (df = 11; 62) \\ 
 \hline 
 \hline \\[-1.8ex] 
-\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
 \end{tabular} 
 \end{table}
 
@@ -475,14 +478,6 @@ but No Decline after Age 40 Years.'' Edited by Bin He. \emph{PLoS ONE} 9
 Knippenberg, Daan van, and Michaéla C. Schippers. 2007. ``Work Group
 Diversity.'' \emph{Annual Review of Psychology} 58 (1):515--41.
 \url{https://doi.org/10.1146/annurev.psych.58.110405.085546}.
-
-\leavevmode\hypertarget{ref-matsu}{}%
-Matsuzaka, Hisashi, Hitoshi Maeshima, Sayaka Kida, Hirofumi Kurita,
-Takahisa Shimano, Yoshiyuki Nakano, Hajime Baba, Toshihito Suzuki, and
-Heii Arai. 2013. ``Gender Differences in Serum Testosterone and Cortisol
-in Patients with Major Depressive Disorder Compared with Controls.''
-\emph{The International Journal of Psychiatry in Medicine} 46
-(2):203--21. \url{https://doi.org/10.2190/PM.46.2.g}.
 
 \leavevmode\hypertarget{ref-MEHTA2015163}{}%
 Mehta, Pranjal H, and Smrithi Prasad. 2015. ``The Dual-Hormone

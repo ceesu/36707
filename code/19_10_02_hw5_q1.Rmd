@@ -102,7 +102,7 @@ Then, we fit several linear regression models and found that the model with the 
 
 ## Introduction
 
-Diversity and conflict are considered important factors which influence how well we work in groups [@vanK]. As the working world becomes more connected across the globe and thus the diversity of organizational groups increases, it is important to characterize the effect of diversity on group performance. Previous work by [@Akinola2018] suggests that both diversity and group hormone levels will influence how well groups perform on a competetive task. In their study, they considered levels of the two hormones testosterone and cortisol. Testosterone is involved in dominance and competition related behaviour in individuals and is produced at a higher level in males than females, while cortisol is a hormone released during physical and psychological stress [@MEHTA2015163]. For healthy males between 19 to 40 years, normal testosterone is known to fall within the 15.4 to 13 nmol/L range [@Kelsey2014]. Healthy levels of hormones for men and women are given in Table, collected from [@matsu]
+Diversity and conflict are considered important factors which influence how well we work in groups [@vanK]. As the working world becomes more connected across the globe and thus the diversity of organizational groups increases, it is important to characterize the effect of diversity on group performance. Previous work by [@Akinola2018] suggests that both diversity and group hormone levels will influence how well groups perform on a competetive task. In their study, they considered levels of the two hormones testosterone and cortisol. Testosterone is involved in dominance and competition related behaviour in individuals and is produced at a higher level in males than females, while cortisol is a hormone released during physical and psychological stress [@MEHTA2015163]. For healthy males between 19 to 40 years, normal testosterone is known to fall within the 15.4 to 13 nmol/L range [@Kelsey2014].
 
 In their work, [@Akinola2018] collected both demographic data and hormone measurements from 370 MBA students organized into 74 groups who partcipated in a competitive week long project where their goal was to outperform other groups. There were 370 individuals randomly organized into 74 groups.  Based on their demographic and hormone measurement data, the authors concluded that diversity is beneficial for performance, but only if group-level testosterone is low; and diversity has a negative effect on performance if group-level testosterone is high. However, the authors did not mention analyzing cortisol even though cortisol levels is suggested to have an effect testosterone's role in status-relevant behavior [@MEHTA2015163].
 
@@ -202,16 +202,27 @@ chart.Correlation(team_dat[vars], histogram=TRUE, pch=19)
 
 The results discussed by the original study [@Akinola2018] include that:
 
-* considered in isolation, group diversity and testosterone are not significantly correlated with performance.
 * when group diversity was low, group testosterone significantly positively predicted performance at p < .01
 * when group diversity was relatively high, group testosterone significantly negatively predicted performance p <0.01
 
 ### Diversity score and testosterone do not individually significantly predict performance
-To start we want to check the simplest assumptions from [@Akinola2018] that diversity score and testosterone do not significantly predict performance on their own. We use the F-test to compare this null hypothesis to the alternative hypothesis where the model only contains an intercept term (Table \ref{fig:model}).
+To start we want to check the simplest assumptions from [@Akinola2018] that diversity score and testosterone do not significantly predict performance on their own. We use the F-test to compare this null hypothesis to the alternative hypothesis where the model only contains an intercept term (Table 1).
 
-```{r model, fig.width=8, fig.height=4, warning=FALSE, echo=FALSE, fig.cap="Model results for testosterone and diversity alone.", results='asis'}
+For these simple models, the coefficient of diversity score (0.066) and average log testosterone (0.703) are not  large in magnitude or significant (p >0.05) indicating that we do not reject the null hypothesis. This agrees with what the authors found.
+
+```{r Q4 model, fig.width=4, fig.height=4, warning=FALSE, echo=FALSE, fig.cap="Model results for testosterone and diversity alone.", results='asis'}
 mod_test_only = lm( final.performance ~avg.log.testosterone, data = team_dat)
 mod_diversity_only = lm( final.performance ~diversity.score, data = team_dat)
+
+
+
+full_form1 <-as.formula(paste("final.performance ~ ", paste(vars, collapse= "+")))
+
+form_sans_cortisol <- as.formula(paste("final.performance ~ ", paste(c(vars[1:6], vars[8:9],"avg.log.testosterone:diversity.score"),collapse= "+")))
+
+full_mod1 <- lm( full_form1, data = team_dat)
+full_mod2<- lm( full_form2, data = team_dat)
+
 #kable(mod_t$coef, digits = c(3,3,3,4), format = 'markdown')
 #kable(mod_d$coef, digits = c(3,3,3,4), format = 'markdown')
 #par(mfrow = c(2, 2)) 
@@ -224,10 +235,24 @@ mod_diversity_only = lm( final.performance ~diversity.score, data = team_dat)
 # pander(mtable123)
 #
 
-stargazer(mod_test_only, mod_diversity_only, header=FALSE, type = "latex",intercept.bottom = FALSE, out.header = FALSE)
+stargazer(
+  #mod_test_only, mod_diversity_only, 
+          full_mod1, 
+          mod_sans_cortisol,
+          full_mod2,
+          model.names = FALSE,
+          flip = TRUE,
+          header=FALSE, type = "latex",
+          intercept.bottom = FALSE, out.header = FALSE,
+          label = "tab:regression",
+          font.size="small",
+          column.sep.width = "1pt",
+          single.row = TRUE,
+          omit.table.layout = "n",
+          #model.names = FALSE, # remove model names
+          title = "Coefficients of regression models studied")
 ```
 
-For these simple models, the coefficient of diversity score (0.066) and average log testosterone (0.703) are not  large in magnitude or significant (p >0.05) indicating that we do not reject the null hypothesis. This agrees with what the authors found.
 
 ### Group diversity on relationship between testosterone and performance
 
@@ -249,9 +274,23 @@ We found a significant positive effect of testosterone on performance when contr
 Figure \ref{fig:pairs} suggested a weakly linear relationship between cortisol and performance (pearson correlation coefficient of )
 
 ```{r, echo=FALSE}
-mod_c <- lm(final.performance ~ avg.log.cortisol, data = team_dat)
-#kable(mod_c$coef, digits = c(3,3,3,4), format = 'markdown')
+
+full_form2 <-as.formula(paste("final.performance ~ ", paste(vars, collapse= "+"), "+avg.log.testosterone:diversity.score",
+                             "+avg.log.cortisol:diversity.score", 
+                             "+avg.log.testosterone:diversity.score:avg.log.cortisol", sep = ""))
+
+mod_sans_cortisol <-lm( form_sans_cortisol, data = team_dat)
+mod_sans_threeway <- lm( form_sans_cortisol , data = team_dat)
+comparison_1 <- anova(full_mod2, mod_sans_cortisol)
+kable(comparison_1, digits = 3, format = "pandoc", caption = "ANOVA table")
+fstat <- unname(summary(model)$fstatistic[1])
+df_model <- unname(summary(model)$fstatistic[2])
+df_res <- unname(summary(model)$fstatistic[3])
+rsq <- summary(model)$r.squared
+p <- pf(fstat, df_model, df_res, lower.tail = FALSE)
 ```
+A 2x2 factorial ANOVA revealed that tension (low, medium, or high) and wool type (A or B) predict a significant amount of variane in number of breaks, $R^2$=`r round(rsq, 2)`, $F(`r round(df_model, 0)`, `r round(df_res, 0)`)=`r round(fstat, 2)`$, $p=`r ifelse(round(p, 3) == 0, "<.001", round(p, 3))`$.
+
 Accordingly, when we fit the very simplest model of final.performance ~ avg.log.cortisol, we find a positive (0.1217) but not significant (p-value 0.56) coefficient as our scatterplots above may suggest.
 
 ### Model with interaction of cortisol and diversity score
@@ -269,7 +308,10 @@ We found that stress seems to positively impact performance (coefficient of 3.34
 
 This suggests stressed groups have better performance and stress changes the effect of diversity to negatively impact performance.
 
+
 ### Conclusion
+
+They don’t fit great on the slides but trust me that normality looks good. The assumption of homogeneity of variance looks good as well.
 
 Here we have analyzed demographic data and hormone measurements from groups of MBA students performing a competetive project, previously published by [@Akinola2018]. We sought to investigate the authors' hypothesis that group diversity has a testosterone-dependent effect on group performance and also to check whether cortisol levels had an effect on this relationship.
 
