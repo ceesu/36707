@@ -198,35 +198,36 @@ Since the authors studied 2-way interactions, to choose the terms in the model w
 # https://rpubs.com/ssharma6/264822
 # https://stats.stackexchange.com/questions/138458/proper-variable-selection-use-only-training-data-or-full-data
 # http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
-library(leaps)
-
-set.seed(6)
-ntot = nrow(team_dat)
-train=sample(seq(ntot),ntot*0.8,replace=FALSE)
-regfit.fwd=regsubsets(final.performance~ . + ,data=team_dat[train,vars],nvmax=40,
-                      method = "exhaustive")
-
-plot(regfit.fwd,scale="Cp")
+# library(leaps)
+# 
+# set.seed(6)
+# ntot = nrow(team_dat)
+#train=sample(seq(ntot),ntot*0.8,replace=FALSE)
+# regfit.fwd=regsubsets(final.performance~ . + ,data=team_dat[train,vars],nvmax=40,
+#                       method = "exhaustive")
+# 
+# plot(regfit.fwd,scale="Cp")
 ```
 It seems that we get some overfitting with Mallows' CP 
 
 ```{r}
-#plot(regfit.fwd,scale="Cp")
-val.errors=rep(NA,36)
-x.test=model.matrix(final.performance~.^2, data=team_dat[-train,vars])# notice the -index!
-for(i in 1:36){
-  coefi=coef(regfit.fwd,id=i)
-  pred=x.test[,names(coefi)]%*%coefi
-  val.errors[i]=mean((team_dat[-train,"final.performance"]-pred)^2)
-}
-plot(sqrt(val.errors), ylab="Root MSE",pch=19,type="b")
-points(sqrt(regfit.fwd$rss[-1]/length(train)),col="blue",pch=19,type="b")
-legend("topright",legend=c("Training","Validation"),col=c("blue","black"),pch=19)
+# plot(regfit.fwd,scale="Cp")
+# val.errors=rep(NA,36)
+# x.test=model.matrix(final.performance~.^2, data=team_dat[-train,vars])# notice the -index!
+# for(i in 1:36){
+#   coefi=coef(regfit.fwd,id=i)
+#   pred=x.test[,names(coefi)]%*%coefi
+#   val.errors[i]=mean((team_dat[-train,"final.performance"]-pred)^2)
+# }
+# plot(sqrt(val.errors), ylab="Root MSE",pch=19,type="b")
+# points(sqrt(regfit.fwd$rss[-1]/length(train)),col="blue",pch=19,type="b")
+# legend("topright",legend=c("Training","Validation"),col=c("blue","black"),pch=19)
 ```
 
 
 
 ```{r}
+library(leaps)
 set.seed(12)
 folds=sample(rep(1:10,length=nrow(team_dat)))
 
@@ -246,39 +247,11 @@ for(k in 1:10){
     pred=predict(best.fit,team_dat[folds==k,vars],id=i)
     cv.errors[k,i]=mean((team_dat$final.performance[folds==k]-pred)^2)
   }
-=======
-It seems validation error is lowest around 4 terms. Therefore we try to obtain the best four term model.
-
-```{r cv}
-k = 10        # number of folds
-set.seed(1)   # set the random seed so we all get the same results
-
-# Assign each observation to a single fold
-folds = sample(1:k, nrow(team_dat), replace = TRUE)
-
-# Create a matrix to store the results of our upcoming calculations
-cv_errors = matrix(NA, k, 19, dimnames = list(NULL, paste(1:)))
-
-# Outer loop iterates over all folds
-for(j in 1:k){
-    
-    # The perform best subset selection on the full dataset, minus the jth fold
-    best_fit = regsubsets(Salary~., data = Hitters[folds!=j,], nvmax=19)
-    
-    # Inner loop iterates over each size i
-    for(i in 1:19){
-        
-        # Predict the values of the current fold from the "best subset" model on i predictors
-        pred = predict(best_fit, Hitters[folds==j,], id=i)
-        
-        # Calculate the MSE, store it in the matrix we created above
-        cv_errors[j,i] = mean((Hitters$Salary[folds==j]-pred)^2)
-    }
-
 }
 
+
 # Take the mean of over all folds for each model size
-mean_cv_errors = apply(cv_errors, 2, mean)
+mean_cv_errors = apply(cv.errors, 2, mean)
 
 # Find the model size with the smallest cross-validation error
 min = which.min(mean_cv_errors)
@@ -288,12 +261,13 @@ plot(mean_cv_errors, type='b')
 points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
 
 ```
-
+It seems validation error is lowest around 8 terms.
+Now let's use best subset selection on the full data set in order to obtain the 8-predictor model.
 
 ```{r}
-regfit_best = regsubsets(final.performance~.^2, data = team_dat[,vars], nvmax = 4)
-coef(regfit_best, 4)
-coef(regfit.fwd, 4)
+regfit_best = regsubsets(final.performance~. + avg.log.testosterone:diversity.score +diversity.score:avg.log.cortisol, data = team_dat[,vars], nvmax = 8)
+coef(regfit_best, 8)
+#coef(regfit.fwd, 4)
 ```
 
 
@@ -414,3 +388,46 @@ By building linear models of performance and testing the significance of the ter
 Although we had some similar findings to the original study when examining diversity and testosterone, our results may not be directly comparable because of some differences in our methodology. Most prominently, [@Akinola2018] have used a faultline analysis to evaluate diversity whereas we have constructed a diversity score. As well, we have not included some of the variables that are present in the models which they tested e.g. proportion of females. We chose to discard these variables based upon our EDA and our reasoning about the relationship between variables collected in the study. Lastly we cannot compare our findings about cortisol because this was not discussed in depth in their original analysis.
 
 # Bibliography
+
+```{r cv}
+k = 10        # number of folds
+set.seed(12)   # set the random seed so we all get the same results
+
+x.test=model.matrix(final.performance~. + avg.log.testosterone:diversity.score +diversity.score:avg.log.cortisol, data=team_dat[-train,vars])
+
+
+# Assign each observation to a single fold
+folds = sample(1:k, nrow(team_dat), replace = TRUE)
+
+# Create a matrix to store the results of our upcoming calculations
+cv_errors = matrix(NA, k, ncol(x.test)-1, dimnames = list(NULL, paste(1:ncol(x.test)-1)))
+
+# Outer loop iterates over all folds
+for(j in 1:k){
+    
+    # The perform best subset selection on the full dataset, minus the jth fold
+    best_fit = regsubsets(Salary~., data = Hitters[folds!=j,], nvmax=19)
+    
+    # Inner loop iterates over each size i
+    for(i in 1:19){
+        
+        # Predict the values of the current fold from the "best subset" model on i predictors
+        pred = predict(best_fit, Hitters[folds==j,], id=i)
+        
+        # Calculate the MSE, store it in the matrix we created above
+        cv_errors[j,i] = mean((Hitters$Salary[folds==j]-pred)^2)
+    }
+
+}
+
+# Take the mean of over all folds for each model size
+mean_cv_errors = apply(cv_errors, 2, mean)
+
+# Find the model size with the smallest cross-validation error
+min = which.min(mean_cv_errors)
+
+# Plot the cross-validation error for each model size, highlight the min
+plot(mean_cv_errors, type='b')
+points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
+
+```

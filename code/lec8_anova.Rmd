@@ -1,10 +1,13 @@
 ---
-title: Lecture 8 - 2x2 Tables, ANOVA, and Linear Regression
-author: 94-842
-date: February 9, 2017
-output: 
+title: "Lecture 8 - 2x2 Tables, ANOVA, and Linear Regression"
+author: "94-842"
+date: "February 9, 2017"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '5'
   html_document:
-    toc: true
+    toc: yes
     toc_depth: 5
 ---
 
@@ -27,6 +30,7 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 library(knitr)
+#library(reshape2)
 ```
 
 ```{r}
@@ -128,7 +132,7 @@ It may be useful to represent the data graphically.  Here's one way of doing so 
 
 **1.** Convert the table into something ggplot2 can process by using `melt()` from the `reshape` package.
 ```{r}
-library(reshape)
+library(reshape2)
 politics.prop
 politics.melt <- melt(politics.prop, id=c("gender","party"))
 politics.melt

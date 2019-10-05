@@ -1,8 +1,11 @@
 ---
 title: "Lecture 9 - Linear regression in R"
 author: "Prof. Alexandra Chouldechova"
-date: ""
+date: ''
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: '5'
   html_document:
     toc: yes
     toc_depth: 5
@@ -16,7 +19,7 @@ library(MASS)
 library(plyr) 
 library(ggplot2)
 library(knitr)
-library(GGally)
+#library(GGally)
 ```
 
 
@@ -279,7 +282,7 @@ pairs(crime[,economic.var.names], lower.panel = panel.cor)
 # Unlike pairs(), ggpairs() works with non-numeric
 # predictors in addition to numeric ones.
 # Consider ggpairs() for your final project
-ggpairs(crime[,c(economic.var.names, "is.south")], axisLabels = "internal")
+#ggpairs(crime[,c(economic.var.names, "is.south")], axisLabels = "internal")
 ```
 
 Looking at the plot, we see that many of the variables are very strongly correlated.  In particular, police expenditures are pretty much identical in 1959 and 1960.  This is an extreme case of collinearity.  Also, unsurprisingly, youth unemployment and adult unemployment are also highly correlated.  
@@ -360,8 +363,6 @@ The p-value of `r summary(crime.lm2)$coef["average.ed", "Pr(>|t|)"]` is less tha
 One of the exercises on Homework 5 will walk you through running a simulation experiment to better understand what signficance means in a regression setting.
 
 Here's a preview.  The red line is the true regression line.  The grey points show a random realization of the data.  The various black curves show 100 estimates of the regression line based on repeated random realizations of the data.  
-
-![Estimated regression lines](./slope_plot.png)
 
 #### What happens when we have collinearity?
 
