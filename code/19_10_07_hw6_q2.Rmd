@@ -49,7 +49,7 @@ test  <- data[-sample, ]
 
 
 
-## a) predicting arrival delay
+## a)
 
 **We are interested in predicting arrival delay (ARR_DELAY) using the variables that would
 be available before the flight takes off: departure time, departure airport (ORD or DFW),
@@ -99,6 +99,7 @@ mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2,
 ```
 
 ## c) 
+
 **The plot function for npregression objects (such as the fit returned by npreg) can plot
 the marginal association of each variable with the response. If you set the plot.errors.method
 = "bootstrap" option, it will also plot bootstrap-based standard errors for these.
@@ -109,13 +110,15 @@ matically worse than kernel regression?**
 The plots below suggest that delay length (ARR_DELAY) is correlated with the variables ARR_DELAY, 
 
 ```{r, warning=FALSE, results='asis'}
-dev.new(width=5, height=8)
+#dev.new(width=5, height=8)
 par(mfrow=c(3,2))
 npplot(bw, 
        data = data, plot.errors.method= "bootstrap")
 ```
 
-## d) Repeat this analysis, but use a locally linear kernel regression (with regtype = "ll" provided to npregbw). Compare the test error from this model to that for the previous one. Discuss possible reasons for any difference you see.
+## d) 
+
+**Repeat this analysis, but use a locally linear kernel regression (with regtype = "ll" provided to npregbw). Compare the test error from this model to that for the previous one. Discuss possible reasons for any difference you see.**
 
 Here it seems that the mean squared error is 3749.95 which is larger than the previous model. 
 ```{r, warning=FALSE, results='asis',echo=FALSE}
