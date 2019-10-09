@@ -59,7 +59,7 @@ naive: assume the effects of time of day or day of week are linear.) Show a tabl
 coefficients you find. Evaluate the model on the test set (using predict) and report its
 squared-error loss.**
 
-We see that the 
+Coefficients are given in Table 1. We see that the mean squared error is 2820.736.
 
 ```{r, warning=FALSE, results='asis'}
 # fit on the training data
@@ -83,7 +83,9 @@ bandwidths with cross-validation.
 Report the kernel regression’s performance on the test set (again using predict and squared-error loss) and compare to the linear model. Does this method seem to do dra-
 matically better?**
 
-```{r, warning=FALSE, results='asis',echo=FALSE}
+Coefficients are given in Table 2. We see that the mean squared error is 3309.925. This method does not seem to do better based on mse.
+
+```{r, warning=FALSE, results='asis'}
 bw =npregbw( ARR_DELAY~ DEP_TIME +ORIGIN + DAY_OF_MONTH + CARRIER + DAY_OF_WEEK,
             data=train,
             subset = 200:500)
@@ -104,7 +106,9 @@ Make the plots with standard errors and interpret the results. Which variables s
 linearities appear to harm the predictions enough to make linear regression perform dra-
 matically worse than kernel regression?**
 
-```{r, warning=FALSE, results='asis',echo=FALSE}
+The plots below suggest that delay length (ARR_DELAY) is correlated with the variables ARR_DELAY, 
+
+```{r, warning=FALSE, results='asis'}
 dev.new(width=5, height=8)
 par(mfrow=c(3,2))
 npplot(bw, 
@@ -113,6 +117,7 @@ npplot(bw,
 
 ## d) Repeat this analysis, but use a locally linear kernel regression (with regtype = "ll" provided to npregbw). Compare the test error from this model to that for the previous one. Discuss possible reasons for any difference you see.
 
+Here it seems that the mean squared error is 3749.95 which is larger than the previous model. 
 ```{r, warning=FALSE, results='asis',echo=FALSE}
 bw2=npregbw(ARR_DELAY~ DEP_TIME +ORIGIN + DAY_OF_MONTH + CARRIER + DAY_OF_WEEK, 
             data=train,
@@ -126,7 +131,7 @@ loclinfit
 mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2, na.rm = TRUE)
 
 dev.new(width=5, height=8, unit = "in")
-par(mfrow=c(3,2))
+par(mfrow=c(5,1))
 npplot(bw2,data = data,
        plot.errors.method= "bootstrap")
 ```
