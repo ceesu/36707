@@ -1,0 +1,37 @@
+---
+title: "Hw6_q4"
+author: "Cathy Su"
+date: "10/7/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Weisberg, Applied Linear Regression, 34d ed., question 12.4 (pp. 267–268). In 12.4.1, your “test”
+# can use a logistic regression model’s coefficients, or you can use a test you remember from
+# another statistics class (such as a test for equality of proportions). In 12.4.5, write the paragraph
+# as though you were writing a paragraph of the Conclusion section of a short report on the
+# analysis.
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

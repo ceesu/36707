@@ -1,0 +1,132 @@
+---
+title: "HW6 q2"
+date: "10/7/2019"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+
+# libraries
+library(tidyverse)
+library(lattice)
+library(dagitty)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library(np)
+library(stargazer)
+library(knitr)
+suppressWarnings(suppressMessages(library(stargazer))) 
+knitr::opts_chunk$set(warning=FALSE,width.cutoff=60)
+opts_knit$set(eval.after = 'fig.cap')
+set.seed(1234)
+
+#   This question uses the following dataset on airline flight delays: http://rosmarus.refsmmat.com/datasets/datasets/flight-delays/
+#   Download DFW_ORD_2016_12.csv, the subset of the data that only contains Dallas/Fort Worth
+# and Chicago O’Hare. Also, install and load the np package for nonparametric regression;
+# the example file I used in class, kernel-smoothing-density.Rmd, is posted on Canvas under
+# Files→Activities.
+
+# data
+data <- read.csv("../data/DFW_ORD_2016_12.csv",
+                     sep = ",", 
+                     header = T)
+
+#  Also, make a “day of week” variable by taking the remainder of dividing “day of month” by 7
+data$DAY_OF_WEEK <- data$DAY_OF_MONTH %% 7.0
+# First, split the data randomly in half, into training and test sets. Use only the training set to fit
+# your models, and use only the test set to evaluate how well they fit.
+sample <- sample.int(n = nrow(data), size = floor(.5*nrow(data)), replace = F)
+train <- data[sample, ]
+test  <- data[-sample, ]
+
+# NOTE call with a formula and use newdata to get predictions at the newdata
+# http://www2.stat.duke.edu/~cr173/Sta444_Sp17/slides/Lec3.pdf
+
+```
+
+
+
+
+## a) predicting arrival delay
+
+**We are interested in predicting arrival delay (ARR_DELAY) using the variables that would
+be available before the flight takes off: departure time, departure airport (ORD or DFW),
+day of the month, and air carrier (airline). Also, make a “day of week” variable.
+First, for a baseline comparison, fit a linear model to the data using these variables. (Be
+naive: assume the effects of time of day or day of week are linear.) Show a table of the
+coefficients you find. Evaluate the model on the test set (using predict) and report its
+squared-error loss.**
+
+We see that the 
+
+```{r, warning=FALSE, results='asis'}
+# fit on the training data
+best.fit=lm(ARR_DELAY~ DEP_TIME +ORIGIN + DAY_OF_MONTH + CARRIER + DAY_OF_WEEK, data=train)
+#coef(best.fit, 8)
+stargazer(best.fit, 
+          title = "Q2a",
+          header=FALSE, type = "latex", font.size="small",
+          column.sep.width = "1pt",
+          single.row = TRUE)
+
+# squared-error loss
+mean((test$ARR_DELAY - predict.lm(best.fit, newdata = test))^2, na.rm = TRUE)
+```
+
+## b) 
+
+**The relationships may be complicated and a linear model may not be appropriate, so
+use npreg to fit a Nadaraya–Watson kernel regression model; allow npregbw to select all
+bandwidths with cross-validation.
+Report the kernel regression’s performance on the test set (again using predict and squared-error loss) and compare to the linear model. Does this method seem to do dra-
+matically better?**
+
+```{r, warning=FALSE, results='asis',echo=FALSE}
+bw =npregbw( ARR_DELAY~ DEP_TIME +ORIGIN + DAY_OF_MONTH + CARRIER + DAY_OF_WEEK,
+            data=train,
+            subset = 200:500)
+
+loclinfit <- npreg(bw)
+loclinfit
+
+# squared-error loss
+mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2, 
+     na.rm = TRUE)
+```
+
+## c) 
+**The plot function for npregression objects (such as the fit returned by npreg) can plot
+the marginal association of each variable with the response. If you set the plot.errors.method
+= "bootstrap" option, it will also plot bootstrap-based standard errors for these.
+Make the plots with standard errors and interpret the results. Which variables seem strongly related with delay length? What do the plots suggest about the appropriate-ness of linear regression? If you saw major non-linearities in any variable, do these non-
+linearities appear to harm the predictions enough to make linear regression perform dra-
+matically worse than kernel regression?**
+
+```{r, warning=FALSE, results='asis',echo=FALSE}
+dev.new(width=5, height=8)
+par(mfrow=c(3,2))
+npplot(bw, 
+       data = data, plot.errors.method= "bootstrap")
+```
+
+## d) Repeat this analysis, but use a locally linear kernel regression (with regtype = "ll" provided to npregbw). Compare the test error from this model to that for the previous one. Discuss possible reasons for any difference you see.
+
+```{r, warning=FALSE, results='asis',echo=FALSE}
+bw2=npregbw(ARR_DELAY~ DEP_TIME +ORIGIN + DAY_OF_MONTH + CARRIER + DAY_OF_WEEK, 
+            data=train,
+            subset = 200:500,
+            regtype = "ll")
+
+loclinfit <- npreg(bw2)
+loclinfit 
+
+# squared-error loss
+mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2, na.rm = TRUE)
+
+dev.new(width=5, height=8, unit = "in")
+par(mfrow=c(3,2))
+npplot(bw2,data = data,
+       plot.errors.method= "bootstrap")
+```
