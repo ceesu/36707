@@ -1,12 +1,12 @@
 ---
 title: "Hw6_q4"
-author: "Cathy Su"
+output:
+  pdf_document: default
+  html_document: default
 date: "10/7/2019"
-output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 
 # Weisberg, Applied Linear Regression, 34d ed., question 12.4 (pp. 267–268). In 12.4.1, your “test”
 # can use a logistic regression model’s coefficients, or you can use a test you remember from
@@ -14,24 +14,90 @@ knitr::opts_chunk$set(echo = TRUE)
 # as though you were writing a paragraph of the Conclusion section of a short report on the
 # analysis.
 
+library(alr3)
+# libraries
+library(tidyverse)
+library(lattice)
+library(dagitty)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library(np)
+library(stargazer)
+library(knitr)
+
+suppressWarnings(suppressMessages(library(stargazer))) 
+knitr::opts_chunk$set(warning=FALSE,width.cutoff=60)
+head(downer)
+
 ```
 
-## R Markdown
+## 1. 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+The survival rate based on the table is 0.7 for females and 0.43 for males. 
+Here we use the logistic regression model’s coefficients (which are both significant p < 0.05) to say that males are significantly more likely to be dead than females.
+```{r}
+prop.table(table(donner$Outcome, donner$Sex), 2)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+model <- glm(Outcome ~ Sex, data=donner, family=binomial(link="logit"))
+summary(model)
 ```
 
-## Including Plots
+## 2. Fit logistic regression.
 
-You can also embed plots, for example:
+The fitted coefficient for age is -0.037 ± 0.17. This means the probability of living decreases by about 1-exp(-0.037)= 4 percent per additional year lived.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r, echo=FALSE}
+model <- glm(Outcome ~ Age, data=donner, family=binomial(link="logit"))
+summary(model)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## 3.
+
+The logistic curve from the above model and the smoothing spline curve are plottd below against the data. It looks like the smoothing spline is overfitting and the logistic curve with only an age term is just a diagonal line which is not a great fit. However the logistic curve with a quadratic term is better than the others since it shows some curving towards where the data are concentrated in outcome.
+
+```{r cars, echo=FALSE}
+data = donner[, c("Age", "Outcome")] %>% na.omit()
+ages <- seq(0, 70, 0.01)
+
+plot(data$Age, data$Outcome, col = 2)
+smoothingSpline = smooth.spline(data$Age, data$Outcome, spar=0.35)
+lines(smoothingSpline,  col = 3)
+logistic <-predict(model, list(Age =ages), type="resp")
+lines(ages,logistic,  col = 4)
+
+model2 <- glm(Outcome ~ Age + I(Age^2), data=donner, family=binomial(link="logit"))
+logistic2 <-predict(model2, list(Age =ages), type="resp")
+lines(ages,logistic2,  col = 5)
+
+colfill<-c(2:5)
+legend("right", fill=colfill, 
+       legend=c("data",  "smooth", "logistic","logistic+quadratic"))
+```
+
+## 4.
+
+Here are teh interpretation of the coefficient:
+
+* For males, coefficient is not significant, suggesting there is no significant difference between sex in terms of survival rate.
+* For StatusHired people the coefficient suggests that they are significantly more likely to die than Family by a factor of exp(-1.625e+00)=0.197 times (p < 0.05).
+* For StatusSingle coefficient is not significant. The result suggests that they are not significantly more likely to die than Family members.
+* The coefficient upon age is exp(1.675e-01)=1.18 indicating age 1 is more likely to survive than newborn. Each additional year adds a factor of exp(-3.889e-03)=0.9961186 to the survival.
+
+```{r pressure, echo=TRUE}
+model<- glm(Outcome ~ Age + I(Age^2) + Sex +Status, 
+              data=donner, 
+              family=binomial(link="logit"))
+summary(model)
+```
+
+The test of the deviance of each term suggests that out of the terms selected, only sex is not significant at p <0.05. The other terms add significantly to the model (p < 0.01).
+
+```{r}
+drop1(model, test = "Chisq")
+```
+
+
+## 5 
+
+We set out to understand the survival rates of a historic group of migrants from the 19th century, the Donner party, which ventured into extreme weather. The group members had three types of status: family members, hired workers, amd single individuals. Out of these, we found that more than half of males and about 30% of females died along the way. To understand what factors affected survival, we first used a logistic model to predict their outcome based upon sex and age individually. However, neither of these variables individually provided a satisfactory fit to the data. Instead we found that adding a term quadratic in age helped provide a better fit perhaps because age is very important to survival. Therefore in our final logistic regression model, we used age and its quadratic term as well as sex and status. We found that when sex and status remain constant, those with hired worker status had a decreased survival probability relative to family members by a factor of 0.2 times (p < 0.05). Additionally if we fix the other variables, then for each increase in age in years, we get a corresponding decrease in survival that depends upon the age of comparison. Whereas a 1-year old is about 0.18 times more likely to survive than a newborn, from each year forward the survival rate is decreased by about one percent (p < 0.05).

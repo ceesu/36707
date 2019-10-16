@@ -18,9 +18,8 @@ library(np)
 library(stargazer)
 library(knitr)
 suppressWarnings(suppressMessages(library(stargazer))) 
-knitr::opts_chunk$set(warning=FALSE,width.cutoff=60)
+knitr::opts_chunk$set(warning=FALSE,width.cutoff=60, echo = TRUE)
 opts_knit$set(eval.after = 'fig.cap')
-set.seed(1234)
 
 #   This question uses the following dataset on airline flight delays: http://rosmarus.refsmmat.com/datasets/datasets/flight-delays/
 #   Download DFW_ORD_2016_12.csv, the subset of the data that only contains Dallas/Fort Worth
@@ -46,9 +45,6 @@ test  <- data[-sample, ]
 
 ```
 
-
-
-
 ## a)
 
 **We are interested in predicting arrival delay (ARR_DELAY) using the variables that would
@@ -59,11 +55,15 @@ naive: assume the effects of time of day or day of week are linear.) Show a tabl
 coefficients you find. Evaluate the model on the test set (using predict) and report its
 squared-error loss.**
 
-Coefficients are given in Table 1. We see that the mean squared error is 2820.736.
+For efficicency I used only 1000 rows of the data. Coefficients are given in Table 1. We see that the mean squared error is 2503.734.
 
 ```{r, warning=FALSE, results='asis'}
+set.seed(1234)
+rows=sample(nrow(train), 1000)
 # fit on the training data
-best.fit=lm(ARR_DELAY~ DEP_TIME +ORIGIN + DAY_OF_MONTH + CARRIER + DAY_OF_WEEK, data=train)
+best.fit=lm(ARR_DELAY~ DEP_TIME +as.factor(ORIGIN) +
+              DAY_OF_MONTH +as.factor(CARRIER) + 
+              as.factor(DAY_OF_WEEK), data=train[rows,])
 #coef(best.fit, 8)
 stargazer(best.fit, 
           title = "Q2a",
@@ -86,14 +86,15 @@ matically better?**
 Coefficients are given in Table 2. We see that the mean squared error is 3309.925. This method does not seem to do better based on mse.
 
 ```{r, warning=FALSE, results='asis'}
-bw =npregbw( ARR_DELAY~ DEP_TIME +ORIGIN + DAY_OF_MONTH + CARRIER + DAY_OF_WEEK,
-            data=train,
-            subset = 200:500)
+bw =npregbw(ARR_DELAY~ DEP_TIME +as.factor(ORIGIN) +
+              DAY_OF_MONTH +as.factor(CARRIER) + 
+              as.factor(DAY_OF_WEEK),
+            data=train[rows,])
 
 loclinfit <- npreg(bw)
-loclinfit
+summary(loclinfit)
 
-# squared-error loss
+# mean squared-error loss
 mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2, 
      na.rm = TRUE)
 ```
@@ -101,34 +102,38 @@ mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2,
 ## c) 
 
 **The plot function for npregression objects (such as the fit returned by npreg) can plot
-the marginal association of each variable with the response. If you set the plot.errors.method
-= "bootstrap" option, it will also plot bootstrap-based standard errors for these.
-Make the plots with standard errors and interpret the results. Which variables seem strongly related with delay length? What do the plots suggest about the appropriate-ness of linear regression? If you saw major non-linearities in any variable, do these non-
+the marginal association of each variable with the response. If you set the plot.errors.method = "bootstrap" option, it will also plot bootstrap-based standard errors for these. Make the plots with standard errors and interpret the results. Which variables seem strongly related with delay length? What do the plots suggest about the appropriate-ness of linear regression? If you saw major non-linearities in any variable, do these non-
 linearities appear to harm the predictions enough to make linear regression perform dra-
 matically worse than kernel regression?**
 
-The plots below suggest that delay length (ARR_DELAY) is correlated with the variables ARR_DELAY, 
+The plots below suggest that:
 
-```{r, warning=FALSE, results='asis'}
-#dev.new(width=5, height=8)
+1. delay length (ARR_DELAY) is correlated with the variable ORIGIN. Seems like delay is longer from ORD.
+2. delay length seems to decrease non linearly with DEP_TIME.
+
+However the nonlinearities are slight and apparently don't seem to impair the performance of the ordinary linear regression for the subset of data we are using.
+
+```{r, warning=FALSE, fig.height=8}
 par(mfrow=c(3,2))
 npplot(bw, 
-       data = data, plot.errors.method= "bootstrap")
+       data =data, plot.errors.method= "bootstrap")
 ```
 
 ## d) 
 
 **Repeat this analysis, but use a locally linear kernel regression (with regtype = "ll" provided to npregbw). Compare the test error from this model to that for the previous one. Discuss possible reasons for any difference you see.**
 
-Here it seems that the mean squared error is 3749.95 which is larger than the previous model. 
-```{r, warning=FALSE, results='asis',echo=FALSE}
-bw2=npregbw(ARR_DELAY~ DEP_TIME +ORIGIN + DAY_OF_MONTH + CARRIER + DAY_OF_WEEK, 
-            data=train,
-            subset = 200:500,
+Here it seems that the mean squared error is 3749.95 which is larger than the previous model. This suggests that the locally linear version doesn't perform as well as the local-constant kernel, maybe due to overfitting to the training data. We have also seen the linear model does not seem to perform worse using the training data that we do have.
+
+```{r, warning=FALSE, results='asis', fig.height=8}
+bw2=npregbw(ARR_DELAY~DEP_TIME +as.factor(ORIGIN) +
+              DAY_OF_MONTH +as.factor(CARRIER) +
+              as.factor(DAY_OF_WEEK), 
+            data=train[rows,],
             regtype = "ll")
 
 loclinfit <- npreg(bw2)
-loclinfit 
+summary(loclinfit)
 
 # squared-error loss
 mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2, na.rm = TRUE)

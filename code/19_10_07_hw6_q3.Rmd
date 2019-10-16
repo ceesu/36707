@@ -1,12 +1,13 @@
 ---
 title: "Hw6_q3"
-author: "Cathy Su"
 date: "10/7/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, width.cutoff=60)
 
 # Weisberg, Applied Linear Regression, 3rd ed., question 12.1 (pp. 266–267). You can obtain the
 # data as the downer variable in the package alr3.
@@ -16,21 +17,87 @@ knitr::opts_chunk$set(echo = TRUE)
 # ordinary kernel density smoothing) imply about how easy it would be to predict survival using
 # this variable.
 library(alr3)
+# libraries
+library(tidyverse)
+library(lattice)
+library(dagitty)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library(np)
+library(stargazer)
+library(knitr)
+
+suppressWarnings(suppressMessages(library(stargazer))) 
+knitr::opts_chunk$set(warning=FALSE,width.cutoff=60)
 head(downer)
 ```
 
-## 
+## 1. 
+
+Myopathy is columns, and cows outcome is on teh y. We see that the percent of surviving cow (outcome =1) is 39% for those without myopathy and 6% for those with myopathy.
 
 ```{r cars}
-summary(cars)
+prop.table(table(downer$Outcome, downer$Myopathy), 2)
 ```
 
-## Including Plots
+## 2. Fit logistic regression.
 
-You can also embed plots, for example:
+Based on the coefficient table the estimated log probability when myopathy = 0 would be -0.4649 ± 0.1823, and when myopathy = 1 would be -2.2320 ± 0.4595. The decrease in odds of survival from mypathy is then exp(-2.2320)=0.11. Then the probability of survival when myopathy=1 is 0.11*exp(-0.4649) = 0.07, and when myopathy=0 is 1-exp(-0.4649) = 0.37. These numbers are about where the last row from Q1 are.
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+library(MASS)
+fit <- glm(Outcome ~ Myopathy, 
+           data=downer, family=binomial(link="logit"))
+summary(fit)
+```
+## 3.
+
+We plotted the density of the CK and log(CK) below. It seems like the dead cows had higher levels of phosphokinase, and this is a bit clearer to see when we have log scale x-axis. Also the values look more normally distributed in the second graph.
+
+```{r }
+library(sm)
+temp <- downer[, c("Outcome", "CK")] %>% na.omit()
+sm.density.compare( temp$CK, as.factor(temp$Outcome))
+title("Serum creatine phosphokinase")
+colfill<-c(2:3)
+legend("right", fill=colfill, 
+       legend=c("Died", "Survived"))
+
+graphics.off()
+
+sm.density.compare(log(temp$CK), as.factor(temp$Outcome))
+title("Serum creatine phosphokinase")
+colfill<-c(2:3)
+legend("right", fill=colfill, 
+       legend=c("Died", "Survived"))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## 4
+
+Here are the results, showign that the fold increase in survival for each unit increase in log(CK) is exp(-0.6117)=0.542428. This suggests perhaps myopathy is more predictive.
+
+```{r, echo=FALSE}
+fit <- glm(Outcome ~ log(CK), 
+           data=downer, family=binomial(link="logit"))
+summary(fit)
+```
+
+
+## 5
+
+Here are the results of the model:
+```{r, echo=FALSE}
+temp <- downer[, c("Outcome", "CK", "Myopathy")] %>% na.omit()
+fit <- glm(Outcome ~ log(CK) + Myopathy + log(CK):Myopathy, 
+           data=downer, family=binomial(link="logit"))
+summary(fit)
+```
+
+Additionally we can show the deviance per term:
+```{r}
+anova(fit, test = "Chisq")
+```
+
+It seems like the effect of each of log(CK) and Myopathy is significant (p < 0.001) but their interaction is not.
