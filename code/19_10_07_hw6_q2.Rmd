@@ -6,7 +6,6 @@ output: pdf_document
 
 
 ```{r setup, include=FALSE}
-
 # libraries
 library(tidyverse)
 library(lattice)
@@ -23,7 +22,7 @@ opts_knit$set(eval.after = 'fig.cap')
 
 #   This question uses the following dataset on airline flight delays: http://rosmarus.refsmmat.com/datasets/datasets/flight-delays/
 #   Download DFW_ORD_2016_12.csv, the subset of the data that only contains Dallas/Fort Worth
-# and Chicago O’Hare. Also, install and load the np package for nonparametric regression;
+# and Chicago O’Hare. Also, install and load the np package for nonparametric r=egression;
 # the example file I used in class, kernel-smoothing-density.Rmd, is posted on Canvas under
 # Files→Activities.
 

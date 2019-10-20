@@ -16,28 +16,6 @@ bibliography: report2.bib
 knitr::opts_chunk$set(echo = FALSE, width.cutoff=60, fig.pos = 'H')
 set.seed(1234)
 
-##### example EDA
-# Questions
-# Do some basic EDA. Are there any major outliers? Keep these in mind when you perform your analysis.
-# 
-# Which sections attract the most diverse group of authors to each discussion?
-# 
-# What’s the relationship between views and posts? Does it vary by subforum? Are there discussions which have disproportionately more views than they should? Some discussions are prominent for some strange Google query and get loads of visitors.
-# 
-# Some discussions involve many people over many pages. Some involve the same three people arguing for weeks. Which kind of discussion is more likely to be closed by moderators? Which is more likely to be deleted?
-# 
-# Do discussions with proportionally more deleted posts tend to get closed more often? There’s a natural confounding effect with the length of the discussion, so be sure to control for this.
-# 
-# Perhaps some sections have a lower barrier to entry than others. It’s thought that discussions in Speculations are much easier to join—-very little technical background is required to argue with crackpots—-than discussions in physics, chemistry, or other technical sections. Do you see evidence of this in the data?
-# 
-# Are members who have been registered for longer before starting the topic more successful at starting active discussions?
-# 
-# Moderators would like to know which topics are at greatest risk of needing to be closed. Build a classification model to predict whether a given topic will be closed, using only covariates that would be available while it is active. (Total number of posts wouldn’t be available, for example, but the post rate, number of posts per unique author, or fraction of posts deleted would be.)
-# 
-# Did discussions tend to be more active in the early years of the forum, or are more recent discussions more active? Consider the effect on post counts and the number of authors.
-# 
-# The overall number of posts may vary seasonally for several reasons. Perhaps students post more in the summer, when they have spare time. Alternately, perhaps they post more during the school year, when they have more science questions. Do you see evidence of either trend in the data?
-
 # libraries
 library(tidyverse)
 library(lattice)
@@ -51,43 +29,50 @@ library(knitr)
 data <- read.csv("../data/sfn-sample.csv",
                      sep = ",", 
                      header = T)
+# early year
+data$year_started <- sub("-.*", "", data$startdate)
+
+# topics
+table <- read.csv("../data/forum_id.csv",
+                     sep = ",", 
+                     header = T)
+topics <- separate_rows(table, Forum.IDs, sep = ",")
+topics$Forum.IDs <- as.numeric(topics$Forum.IDs)
+setdiff(topics$Forum.IDs, data$forum_id)
+data$topic <- plyr::mapvalues(as.character(data$forum_id),
+                              from = as.character(topics$Forum.IDs),
+                              to = as.character(topics$Category)) 
+
+#
 ```
 
 ## Executive Summary
 
-In this report, we analyzed a demographic data set collected by *[@Akinola2018]* and explore the relationship between a set of variables that contribute to group performance on a competetive task. The data comprises individual level and group level statistics collected from groups of MBA students completing a 7-day group project. We use  exploratory data analysis and regression models to mainly explore how **diversity, cortisol and testosterone** levels affect **final.performance**. The f-test shows that diversity score, cortisol and testosterone individually do not significantly affect final.performance. 
 
-Then, we fit several linear regression models and found that the model with the highest adjusted R squared value predicts performance as a function of average log testosterone, diversity and group size. In this model, if we hold group size constant, indeed diversity has a positive effect on performance, but only if group-level testosterone is low.
 
 ## Introduction
 
-Diversity and conflict are considered important factors which influence how well we work in groups [@vanK]. As the working world becomes more connected across the globe and thus the diversity of organizational groups increases, it is important to characterize the effect of diversity on group performance. Previous work by [@Akinola2018] suggests that both diversity and group hormone levels will influence how well groups perform on a competetive task. In their study, they considered levels of the two hormones testosterone and cortisol. Testosterone is involved in dominance and competition related behaviour in individuals and is produced at a higher level in males than females, while cortisol is a hormone released during physical and psychological stress [@MEHTA2015163]. For healthy males between 19 to 40 years, normal testosterone is known to fall within the 15.4 to 13 nmol/L range [@Kelsey2014]. Healthy levels of hormones for men and women are given in Table, collected from [@matsu]
-
-In their work, [@Akinola2018] collected both demographic data and hormone measurements from 370 MBA students organized into 74 groups who partcipated in a competitive week long project where their goal was to outperform other groups. There were 370 individuals randomly organized into 74 groups.  Based on their demographic and hormone measurement data, the authors concluded that diversity is beneficial for performance, but only if group-level testosterone is low; and diversity has a negative effect on performance if group-level testosterone is high. However, the authors did not mention analyzing cortisol even though cortisol levels is suggested to have an effect testosterone's role in status-relevant behavior [@MEHTA2015163].
-
-To validate the author's hypothesis and additionally examine the specific role of cortisol, we have obtained the [@Akinola2018] dataset which has been processed by [Nifty Datasets](http://rosmarus.refsmmat.com/datasets/datasets/hormone-diversity/) into separate individual level and group level datasets. Here we test the interactions between the hormone profiles of both cortisol and testosterone by modelling their effect on performance in the context of the demographic variables collected and the group diversity.
-
 ### Causal diagram 
-
-Based on the preamble from [@Akinola2018] we may guess that the effects of testosterone and diversity on performance are mediated by their opposite effects on 'cooperation' (not directly measured) in the group. Furthermore cortisol levels largely unevaluated by the study may influence performance through affecting group 'stress' (not directly measured). Putting this together with the measured variables, our hypothesized causal diagram follows Figure \ref{fig:cause}. Here 'interim.other' describes other interim measurements of group performance which were in the dataset and 'final.other' describes the measurements of group performance at the conclusion of the task which contribute to the **final.performance** score. This diagram helps set the context for reasoning about which regression models we should try.
 
 ```{r causal, fig.width=9, fig.height=2.5, echo=FALSE, fig.cap="\\label{fig:cause}Causal diagram illustrates hypothesized relationships of experimental variables involved in relationship between testosterone and final group performance."}
 
 g <- dagitty('dag {
-    testosterone [pos="0,0"]
-    diversity [pos="0,1"]
-    final.performance [pos="4,0.5"]
-    final.other [pos="4,1"]
-    interim.other[pos="3,1"]
-    cortisol [pos="1.2,0"]
-    cooperation [pos="2,0.5"]
-    gender.ethnicity.country [pos="0,2"]
-    team.females [pos="-1,1"]
-    age [pos="-1,1.5"]
-    team.size  [pos="-1,2.0"]
+    state [pos="0,1"]
+    posts [pos="1,0.5"]
+    views [pos="2,2"]
+    duration [pos="1,1"]
+    startdate [pos="1.2,0"]
+    forum_id [pos="2,0.5"]
+    author_diversity [pos="0,2"]
+    deleted_posts [pos="-1,1"]
+    pinned [pos="-1,1.5"]
+    author_exp  [pos="-1,2.0"]
     stress [pos="2,0"]
+    not_deleted [pos="0,2"]
     
-    cortisol -> stress -> cooperation
+    forum_id -> author_diversity 
+    forum_id -> posts -> views
+    author_diversity  -> deleted_posts <- 
 }')
 
 plot(g)
@@ -102,36 +87,45 @@ plot(g)
 data <- read.csv("../data/sfn-sample.csv",
                      sep = ",", 
                      header = T)
+
+summary(data)
+
+
+
+
+  
 ```
 
 
 ### Handling missing data 
-Before calculating additional team level statistics, we saw there were <10 individuals with partly missing data. Since we are trying to look at team level performance, we did not remove any individuals. For these individuals, not everything was missing so we calculated group average measurements, e.g. average hormone measurements, from other members.  
-
-From this we obtain a complete group level dataset where only measurements in the 'interim' variables are missing. Given that it's unclear how the multiple interim measurements may relate to the final score and they contain many missing values, we removed these variables.
 
 ### Calculation of other group level variables from individual level variables
 
-We are interested in doing our analysis at the group level therefore we needed to aggregate the individual level data. To calculate group level testosterone, cortisol and age we first averaged the corresponding individual-level statistics, ignoring missing cases.
+### Model building
 
-Additionally, we have calculated group diversity score as the number of unique gender-ethnicity-country combinations present in the group. Lastly we calculate proportion of females in the group as the number of females divided by group size. 
 
-## Exploratory Data Analysis & Data Summary
+## Exploratory Data Analysis 
 
-### Distribution of hormone levels across individuals and groups
+```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs}Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of astericks."}
+# check relationships of all variables of interest
+vars <- colnames(data)[c(2:13)]
+#cor(team_dat)
+#pairs(team_dat[vars], pch = 19,  lower.panel=NULL)
+library("PerformanceAnalytics")
+#chart.Correlation(data[vars], pch=19)
+#summary(data)
+pairs(data[,2:13], method = "pearson")
+```
 
-It was clear when for both hormone levels that the log transformed values were distributed with less skew across teams than the raw values and have fewer outlier values. This is preferable so we chose like the authors to use averaged log testosterone per group. Figure \ref{fig:test} shows the distribtuions for testosterone but for cortisol the difference is similar. 
+We performed 
+
+### Diverse discussions
+
+Number of distinct authors who participated in the discussion.
 
 ```{r test, fig.width=6, fig.height=6, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:test}Distributions of testosterone and log testosterone levels in each team"}
-p1 <-ggplot(ind_dat, aes(x= team.id, y=Testosterone))+
+p1 <-ggplot(data, aes(x= team.id, y=Testosterone))+
   geom_boxplot()+theme_hw + ylab("Testosterone in pg/mL")
-p2 <-ggplot(ind_dat, aes(x= team.id, y=log.testosterone))+
-  geom_boxplot()+theme_hw + ylab("Log(Testosterone in pg/mL)")
-p3 <-ggplot(ind_dat, aes(x= team.id, y=Cortisol))+
-  geom_boxplot()+theme_hw + ylab("Cortisol in nMol/L")
-p4 <-ggplot(ind_dat, aes(x= team.id, y=log.cortisol))+
-  geom_boxplot()+theme_hw + ylab("Log(cortisol in nMol/L)")
-grid.arrange(p1, p2, p3, p4, ncol = 2)
 ```
 
 ### Univariate and pairwise distributions of group level variables
