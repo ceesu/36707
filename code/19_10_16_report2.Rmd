@@ -30,7 +30,7 @@ data <- read.csv("../data/sfn-sample.csv",
                      sep = ",", 
                      header = T)
 # early year
-data$year_started <- sub("-.*", "", data$startdate)
+data$year_started <- as.numeric(sub("-.*", "", data$startdate))
 
 # topics
 table <- read.csv("../data/forum_id.csv",
@@ -39,16 +39,28 @@ table <- read.csv("../data/forum_id.csv",
 topics <- separate_rows(table, Forum.IDs, sep = ",")
 topics$Forum.IDs <- as.numeric(topics$Forum.IDs)
 setdiff(topics$Forum.IDs, data$forum_id)
-data$topic <- plyr::mapvalues(as.character(data$forum_id),
-                              from = as.character(topics$Forum.IDs),
+data$category <- plyr::mapvalues(data$forum_id,
+                              from = topics$Forum.IDs,
                               to = as.character(topics$Category)) 
 
-#
+# proportion_deleted
+data$proportion_deleted <- data$deleted_posts/data$posts
+data$post_rate <- 0
+data$post_rate[data$duration > 0]<- data$posts[data$duration > 0]/(data$duration[data$duration > 0]) # if the denom is zero, set post rate to zero
+
+
+# > colnames(data)
+#  [1] "tid"                "state"              "posts"              "views"             
+#  [5] "duration"           "startdate"          "forum_id"           "authors"           
+#  [9] "deleted_posts"      "not_deleted"        "pinned"             "author_exp"        
+# [13] "author_banned"      "year_started"       "topic"              "proportion_deleted"
+# [17] "post_rate"
+
 ```
 
 ## Executive Summary
 
-
+Moderators at online forums are always interested in growing the participation while keeping a high quality discussion. Therefore, at times it becomes necessary to delete posts that might become problematic. The purpose of this study was to assess the variables that may influence which topics need to be closed on this online forum. It's been hypothesized that the type of post authors, topic of the post and XXX are factors in which discussions will need to be shut down. Discussion topics were randomly sampled from ScienceForums.Net (SFN). XXX studies passed the inclusion criteria and XXX variables represented potential contributing factors towards whether discussions will need to be closed. XXX proved to be the most consistent moderator of I-PA, suggesting that much of the discordance may be from motivational flux between initial intention and eventual behaviour. Anticipated regret and conscientiousness also had evidence as the moderators of I-PA. Perceived control/self-efficacy, planning, extraversion, habit and environmental proximity to recreation showed some evidence for moderation, while gender, agreeableness, openness, body mass index and ethnicity did not appear to moderate I-PA. The findings demonstrate that traditional intention theories may need augmentation to better account for the evidence present in I-PA discordance.
 
 ## Introduction
 
@@ -58,21 +70,19 @@ data$topic <- plyr::mapvalues(as.character(data$forum_id),
 
 g <- dagitty('dag {
     state [pos="0,1"]
-    posts [pos="1,0.5"]
+    proportion_deleted [pos="1,0.5"]
     views [pos="2,2"]
     duration [pos="1,1"]
     startdate [pos="1.2,0"]
     forum_id [pos="2,0.5"]
     author_diversity [pos="0,2"]
-    deleted_posts [pos="-1,1"]
     pinned [pos="-1,1.5"]
     author_exp  [pos="-1,2.0"]
-    stress [pos="2,0"]
     not_deleted [pos="0,2"]
     
     forum_id -> author_diversity 
-    forum_id -> posts -> views
-    author_diversity  -> deleted_posts <- 
+    forum_id -> proportion_deleted -> views
+    author_diversity  -> proportion_deleted <- 
 }')
 
 plot(g)
@@ -106,20 +116,53 @@ summary(data)
 
 ## Exploratory Data Analysis 
 
+### Univariate variable distributions
+
+For the qualitative variables, we found that there were many forum ids which were missing a categorization. 
+
+```{r univariate, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs}Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of astericks."}
+theme_hw <- theme(plot.title = element_text(hjust = 0.5),
+        #axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()
+       # panel.grid.major =   element_line(colour = "gray",size=0.5)
+  )
+p1 <-ggplot(data, aes(x= as.factor(not_deleted), y=state))+
+  geom_bar(stat="identity")#+theme_hw #+ ylab("Testosterone in pg/mL")
+p2 <-ggplot(data, aes(y=views, x= as.factor(not_deleted)))+
+  geom_boxplot()+theme_hw #+ ylab("Log(Testosterone in pg/mL)")
+p3 <-ggplot(data, aes(y=pinned, x= as.factor(not_deleted)))+
+  geom_boxplot()+theme_hw #+ ylab("Cortisol in nMol/L")
+p4 <-ggplot(data, aes(y=author_banned, x= as.factor(not_deleted)))+
+  geom_boxplot()+theme_hw #+ ylab("Log(cortisol in nMol/L)")
+grid.arrange(p1, p2, 
+             p3, p4, 
+             ncol = 2)
+```
+
+
+### Bivariate distributions 
+
+We then examined the correlation of the other variables:
+
 ```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs}Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of astericks."}
 # check relationships of all variables of interest
 vars <- colnames(data)[c(2:13)]
 #cor(team_dat)
 #pairs(team_dat[vars], pch = 19,  lower.panel=NULL)
-library("PerformanceAnalytics")
+#library("PerformanceAnalytics")
 #chart.Correlation(data[vars], pch=19)
+quant_vars <- colnames(data)[c(3:5,8,12:14, 16:17)]
 #summary(data)
-pairs(data[,2:13], method = "pearson")
+library(GGally)
+ggpairs(data[,quant_vars])
 ```
 
 We performed 
 
-### Diverse discussions
+## Q1. Relationship between views and posts
+
+
+## Q2. Diverse discussions closed or deleted
 
 Number of distinct authors who participated in the discussion.
 
@@ -128,7 +171,7 @@ p1 <-ggplot(data, aes(x= team.id, y=Testosterone))+
   geom_boxplot()+theme_hw + ylab("Testosterone in pg/mL")
 ```
 
-### Univariate and pairwise distributions of group level variables
+## Q3 discussions with proportionally more deleted posts tend to get closed more often
 
 The univariate distributions of the group level variables is given across the diagonal in Figure \ref{fig:pairs}. We saw that in particular, our diversity score appears bimodal. Although our score is calculated differently, [@Akinola2018] classified diversity score into two bins in their faultline analysis. This suggests that our diversity score is reasonable since it may also reflect some intrinsic bimodality present in the data. 
 
@@ -150,6 +193,13 @@ vars <- colnames(team_dat)[c(2:4, 15:20)]
 library("PerformanceAnalytics")
 chart.Correlation(team_dat[vars], histogram=TRUE, pch=19)
 ```
+
+## Success at starting active discussions
+
+
+## Closing a topic
+
+Build a classification model to predict whether a given topic will be closed, using only covariates that would be available while it is active. (Total number of posts wouldn’t be available, for example, but the post rate, number of posts per unique author, or fraction of posts deleted would be.)
 
 ## Results
 
@@ -278,39 +328,7 @@ summary(mod)
 
 ```
 
-## check the model 
 
-
-
-## Fit the coefficients on the full data
-
-
-### Diversity score and testosterone do not individually significantly predict performance
-To start we want to check the simplest assumptions from [@Akinola2018] that diversity score and testosterone do not significantly predict performance on their own. We use the F-test to compare this null hypothesis to the alternative hypothesis where including these variables significantly improves model fit to the data.
-
-```{r model, fig.width=8, fig.height=4, warning=FALSE, echo=FALSE, fig.cap="Model results for testosterone and diversity alone."}
-mod_t = lm( final.performance ~avg.log.testosterone, data = team_dat)
-mod_d = lm( final.performance ~diversity.score, data = team_dat)
-kable(mod_t$coef, digits = c(3,3,3,4), format = 'markdown')
-kable(mod_d$coef, digits = c(3,3,3,4), format = 'markdown')
-plot(mod_t)
-```
-For these simple models, the coefficient of diversity score (0.065) and average log testosterone (0.7032) are not  large in magnitude or significant (p >0.05) indicating that we do not reject the null hypothesis. This agrees with what the authors found.
-
-### Group diversity on relationship between testosterone and performance
-
-Next we fit a model to examine whether including an interaction between them could predict performance. 
-
-```{r test_model, fig.width=4, fig.height=4, warning=FALSE, fig.cap="Model results with interaction between diversity and performance"}
-# model with normalized score
-mod=lm(final.performance ~ avg.log.testosterone + diversity.score + team.size, data = team_dat)
-summary(mod)
-mod3=lm(final.performance ~ avg.log.testosterone + diversity.score + team.size + avg.log.testosterone:diversity.score, data = team_dat)
-summary(mod3)
-kable(mod3$coef, digits = c(3,3,3,4), format = 'markdown')
-#plot(mod, which=1, col=c("blue"))
-```
-We found a significant positive effect of testosterone on performance when controlling for diversity score and team size (coefficient = 10.2743, p < 0.001). Further we find a significant positive effect of diversity score on performance when controlling for testosterone, team size and their interaction (coefficient = 10.1889, p < 0.001). The interaction term has a negative coefficient. This suggests that whereas each of testosterone and diversity aids performance, their interaction works against these effects. Our results are in line with those of the original study.
 
 ### Q5: Effect of cortisol on relationship between diversity and performance
 We replot the correlation of cortisol with final.performance in Figure \ref{fig:cort} which seems weakly linear (adjusted r squared value < 0.2).
@@ -333,17 +351,7 @@ kable(mod_c$coef, digits = c(3,3,3,4), format = 'markdown')
 ```
 Accordingly, when we fit the very simplest model of final.performance ~ avg.log.cortisol, we find a positive (0.1217) but not significant (p-value 0.56) coefficient as our scatterplots above may suggest.
 
-### Model with interaction of cortisol and diversity score
-
-Next, we tested whether cortisol levels could change the relationship between diversity score and performance with a model containing each of these variables and their three way interaction. Again we are controlling for team size by including it as a term in the model.
-
-```{r stress, fig.width=8, fig.height=4, warning=FALSE, echo=FALSE}
-#  will stress change the effect of diversity score on performance?
-mod = lm(final.performance ~ avg.log.cortisol + diversity.score + team.size +avg.log.cortisol:diversity.score, data = team_dat)
-summary(mod)
-#plot(mod)
-```
-We found that stress seems to positively impact performance (coefficient of 3.348 units, p < 0.01) when controlling for diversity score, team size and the interaction between cortisol and diversity score. However, the diversity score is estimated here to have a negative effect on performance (coefficient of -6.8455 units, p < 0.05). Furthermore the interaction term also has a weak negative effect (coefficient of -0.7483 units, p < 0.05). 
+### Model with 
 
 This suggests stressed groups have better performance and stress changes the effect of diversity to negatively impact performance.
 

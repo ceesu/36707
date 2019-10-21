@@ -1,0 +1,241 @@
+---
+title: "Hypothesis tests in regression"
+author: "Qiao Su"
+date: "10/21/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is a fill-in-the-blank activity. Read the text, run the code, and follow the instructions, writing your answers where blanks are provided. You'll then turn this in as a short "homework" for credit.
+
+We've seen a lot about hypothesis tests in regression: *t* tests, *F* tests, and other tests. What exactly do they mean, and what do they measure?
+
+We'll explore this using some simulations. In each simulation, we'll make *X* using random uniform variables that are not correlated with each other?
+
+```{r}
+# Generate random X with N rows and p columns.
+generate_X <- function(N, p) {
+  X <- matrix(runif(N * p), nrow=N)
+
+  return(as.data.frame(X))
+}
+```
+
+Here are functions to generate Y from X using beta:
+
+```{r}
+# Generate errors for all X. Takes X as an argument; in a correctly specified model,
+# the error doesn't depend on X, but we might want to simulate situations where it does.
+generate_error <- function(X, sigma) {
+  return(sigma * rnorm(nrow(X)))
+}
+
+# Generate Y using X, beta, and the error.
+generate_Y <- function(X, beta, sigma) {
+  return(as.matrix(X) %*% beta + generate_error(X, sigma))
+}
+```
+
+These functions will make it easy for us to extract the F statistic and $R^2$ for a model:
+
+```{r}
+# Return the p value for the F test of a linear model.
+f_p_value <- function(fit) {
+  fstat <- summary(fit)$fstatistic
+  
+  pf(fstat["value"], fstat["numdf"], fstat["dendf"], lower.tail=FALSE)
+}
+
+# Return the R^2 for a linear model fit.
+r_squared <- function(fit) {
+  summary(fit)$r.squared
+}
+```
+
+
+## Power of tests
+
+Let's imagine running an ordinary linear model with real effects. What sample size do we need to detect those effects?
+
+The probability of detecting a certain-size effect with a certain sample size is called the *power*. If the power is low, then our failure to detect a statistically significant difference doesn't mean much -- if a true effect were there, we quite likely wouldn't have found it.
+
+Try running the simulation below. Examine the plot produced and make sure you understand what the code is doing.
+
+```{r}
+beta <- c(-0.2, 0, -0.8)
+sigma <- 0.5 # scale teh normal distribution
+
+# What sample sizes should we try?
+#sample_sizes <- 10:100
+beta_scale <- seq(0.4, 2, by=0.2)
+
+# For each sample size, what fraction of the tests were significant?
+num_significant <- numeric(length(beta_scale))
+
+# How many times should we try at each sample size?
+num_trials <- 100
+N <- 50
+
+for (jj in seq_along(beta_scale)) {
+  beta <- beta*beta_scale[jj]/1.0
+  
+  for (ii in 1:num_trials) {
+    X <- generate_X(N, length(beta))
+    Y <- generate_Y(X, beta, sigma)
+  
+    fit <- lm(Y ~ ., data=X) # . means "all columns"
+    
+    if (f_p_value(fit) <= 0.05) {
+      num_significant[jj] <- num_significant[jj] + 1
+    }
+  }
+}
+
+plot(beta_scale, num_significant / num_trials,
+     xlab="beta_scale", ylab="Power to reject F test null")
+```
+
+### Questions for you
+
+Now, answer these questions *before* trying out more simulations. Write your answers below.
+
+1. If the coefficients in beta are larger (in absolute value), but we keep N the same, should the power increase or decrease? Why does this make sense?
+2. If sigma is larger, keeping N the same, should the power increase or decrease?
+3. If we fail to reject the F test, what is a reasonable conclusion to draw? Write out a sentence of the form "Since p > 0.05, we... and conclude that..."
+
+Answers:
+
+1. The power should increase because we would need to show that the effect is still distinguishable from zero.
+2. The power decreases since the signal is noisier. 
+3. Since p > 0.05, we cannot reject the null hypothesis and conclude that the coefficient beta is not significantly different from zero with a probability of 95%. We cannot distinguish whether the coefficients have an effect.
+
+Now try running a few more simulations (just tweak the code above) to answer questions 1 and 2. Summarize your results:
+
+1. The power increases with increasing beta in a 
+2.
+
+## The effect of doing model selection
+
+Let's consider doing a similar simulation. But this time, beta will be a zero vector: there is **no** effect. We run stepwise variable selection and then consider the *F* test of the selected model.
+
+Crucially, we'll add more variables -- variables that still have no true effect.
+
+**Before** you run the simulation below:
+
+Question: If we add more variables, meaning more columns in *X*, but none of them are correlated with *Y*, what will happen to the *F* test after stepwise selection? Will it conclude that there are significant effects?
+
+Answer:
+
+```{r}
+sigma <- 0.5
+
+# Sample size to try -- needs to be bigger than the number of variables
+N <- 100
+
+# How many variables to use in our model
+num_variables <- seq(1, 40, by=2)
+
+# For each number of variables, what fraction of the tests were significant?
+num_significant <- numeric(length(num_variables))
+
+# How many times should we try?
+num_trials <- 50
+
+for (jj in seq_along(num_variables)) {
+  p <- num_variables[jj]
+
+  for (ii in 1:num_trials) {
+    X <- generate_X(N, p)
+    
+    # Don't bother using generate_Y, because beta is 0. It would just do a matrix
+    # multiplication with 0 for no purpose.
+    Y <- generate_error(X, sigma)
+  
+    fit <- lm(Y ~ ., data=X)
+    step_fit <- step(fit, trace=0) # do stepwise regression
+
+    if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
+      num_significant[jj] <- num_significant[jj] + 1
+    }
+  }
+}
+
+plot(num_variables, num_significant / num_trials,
+     xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
+```
+
+### Questions for you
+
+Now, some questions. Answer these **before** running any more simulations:
+
+1. What will happen if we *don't* do stepwise selection, and just fit the model to all the variables? Will we see the same relationship in the graph?
+2. The $R^2$ statistic summarizes the amount of variance in *Y* that is explained by the columns in *X*. In this simulation, none of the variation in *Y* is truly related to *X*, but some variation will be related by chance. How will $R^2$ vary with the number of variables in the model?
+
+Now adjust the simulations above and write what you find:
+
+1.
+2.
+
+## Non-normal errors
+
+Next question: What is the effect of non-Normal residuals on regression, and specifically on the hypothesis tests we do? We know the F test assumes normality of residuals, but how much does that matter?
+
+We can make our errors be heavy-tailed by using a *t* distribution:
+
+```{r}
+# Generate errors for all X. The errors are t-distributed with 2 degrees of freedom.
+generate_error <- function(X, sigma) {
+  return(sigma * rt(nrow(X), df=2))
+}
+```
+
+What does this look like in a QQ plot? Run this a few times to see some examples:
+
+```{r}
+data <- rt(100, df=2)
+qqnorm(data)
+qqline(data)
+```
+
+Let's fit models at different sample sizes.
+
+```{r}
+sigma <- 0.5
+
+# Sample size to try -- needs to be bigger than the number of variables
+N <- 100
+
+# How many variables to use in our model
+num_variables <- seq(1, 40, by=2)
+
+# For each number of variables, what fraction of the tests were significant?
+num_significant <- numeric(length(num_variables))
+
+# How many times should we try?
+num_trials <- 50
+
+for (jj in seq_along(num_variables)) {
+  p <- num_variables[jj]
+
+  for (ii in 1:num_trials) {
+    X <- generate_X(N, p)
+    
+    # Don't bother using generate_Y, because beta is 0. It would just do a matrix
+    # multiplication with 0 for no purpose.
+    Y <- generate_error(X, sigma)
+  
+    fit <- lm(Y ~ ., data=X)
+    step_fit <- step(fit, trace=0) # do stepwise regression
+
+    if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
+      num_significant[jj] <- num_significant[jj] + 1
+    }
+  }
+}
+
+plot(num_variables, num_significant / num_trials,
+     xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
+```
