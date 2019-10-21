@@ -71,6 +71,7 @@ sigma <- 0.5 # scale teh normal distribution
 # What sample sizes should we try?
 #sample_sizes <- 10:100
 beta_scale <- seq(0.4, 2, by=0.2)
+sigma_scale <- seq(0.4, 2, by=0.2)
 
 # For each sample size, what fraction of the tests were significant?
 num_significant <- numeric(length(beta_scale))
@@ -79,8 +80,9 @@ num_significant <- numeric(length(beta_scale))
 num_trials <- 100
 N <- 50
 
-for (jj in seq_along(beta_scale)) {
-  beta <- beta*beta_scale[jj]/1.0
+for (jj in seq_along(sigma_scale)) {
+ # beta <- beta*beta_scale[jj]/1.0
+  sigma <- sigma*sigma_scale[jj]
   
   for (ii in 1:num_trials) {
     X <- generate_X(N, length(beta))
@@ -94,8 +96,8 @@ for (jj in seq_along(beta_scale)) {
   }
 }
 
-plot(beta_scale, num_significant / num_trials,
-     xlab="beta_scale", ylab="Power to reject F test null")
+plot(sigma_scale, num_significant / num_trials,
+     xlab="sigma_scale", ylab="Power to reject F test null")
 ```
 
 ### Questions for you
@@ -111,11 +113,12 @@ Answers:
 1. The power should increase because we would need to show that the effect is still distinguishable from zero.
 2. The power decreases since the signal is noisier. 
 3. Since p > 0.05, we cannot reject the null hypothesis and conclude that the coefficient beta is not significantly different from zero with a probability of 95%. We cannot distinguish whether the coefficients have an effect.
+However we can say that the effect size is not easy to detect.
 
 Now try running a few more simulations (just tweak the code above) to answer questions 1 and 2. Summarize your results:
 
-1. The power increases with increasing beta in a 
-2.
+1. The power increases with increasing beta in a nonlinear way.
+2. The power decreases with increasing sigma in a nonlinear way. It drops off sharply after sigma scaling factor increases past about 1.5 fold.
 
 ## The effect of doing model selection
 
@@ -127,7 +130,7 @@ Crucially, we'll add more variables -- variables that still have no true effect.
 
 Question: If we add more variables, meaning more columns in *X*, but none of them are correlated with *Y*, what will happen to the *F* test after stepwise selection? Will it conclude that there are significant effects?
 
-Answer:
+Answer: It will, because we are able to overfit to the data with the extra variables.
 
 ```{r}
 sigma <- 0.5
@@ -167,6 +170,8 @@ plot(num_variables, num_significant / num_trials,
      xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
 ```
 
+It seems like from the plot that thefraction of nulls falsely rejected increases almost linearly with ht enumber of variables.
+
 ### Questions for you
 
 Now, some questions. Answer these **before** running any more simulations:
@@ -174,10 +179,14 @@ Now, some questions. Answer these **before** running any more simulations:
 1. What will happen if we *don't* do stepwise selection, and just fit the model to all the variables? Will we see the same relationship in the graph?
 2. The $R^2$ statistic summarizes the amount of variance in *Y* that is explained by the columns in *X*. In this simulation, none of the variation in *Y* is truly related to *X*, but some variation will be related by chance. How will $R^2$ vary with the number of variables in the model?
 
+Answers:
+1. We will not, because some of them are going to 
+2. It will increase because more variables are able to explain more of the varation just by chance. 
+
 Now adjust the simulations above and write what you find:
 
-1.
-2.
+1. We will not because 
+2. It will increase because more variables are able to explain more of the varation just by chance. 
 
 ## Non-normal errors
 
