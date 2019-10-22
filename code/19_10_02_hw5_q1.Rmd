@@ -166,7 +166,7 @@ It was clear when for both hormone levels that the log transformed values were d
 
 ```{r test, fig.width=8, fig.height=3, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:test}Distributions of testosterone and log testosterone levels in each team."}
 p1 <-ggplot(ind_dat, aes(x= team.id, y=Testosterone))+
-  geom_boxplot()+theme_hw + ylab("Testosterone in pg/mL")
+  geom_histogram()+theme_hw + ylab("Testosterone in pg/mL")
 p2 <-ggplot(ind_dat, aes(x= team.id, y=log.testosterone))+
   geom_boxplot()+theme_hw + ylab("Log(Testosterone in pg/mL)")
 p3 <-ggplot(ind_dat, aes(x= team.id, y=Cortisol))+

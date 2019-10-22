@@ -36,13 +36,17 @@ data$year_started <- as.numeric(sub("-.*", "", data$startdate))
 table <- read.csv("../data/forum_id.csv",
                      sep = ",", 
                      header = T)
+# add a NA level to the table.
+
 topics <- separate_rows(table, Forum.IDs, sep = ",")
 topics$Forum.IDs <- as.numeric(topics$Forum.IDs)
 setdiff(topics$Forum.IDs, data$forum_id)
 data$category <- plyr::mapvalues(data$forum_id,
                               from = topics$Forum.IDs,
                               to = as.character(topics$Category)) 
-
+data$category <- as.factor(data$category)
+levels(data$category)[1:32] <- NA
+#test <- lapply(data$category, function(x) as.character(as.numeric(x)))
 # proportion_deleted
 data$proportion_deleted <- data$deleted_posts/data$posts
 data$post_rate <- 0
@@ -66,7 +70,7 @@ Moderators at online forums are always interested in growing the participation w
 
 ### Causal diagram 
 
-```{r causal, fig.width=9, fig.height=2.5, echo=FALSE, fig.cap="\\label{fig:cause}Causal diagram illustrates hypothesized relationships of experimental variables involved in relationship between testosterone and final group performance."}
+```{r causal, fig.width=9, fig.height=2.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships of experimental variables involved in relationship between testosterone and final group performance."}
 
 g <- dagitty('dag {
     state [pos="0,1"]
@@ -82,7 +86,7 @@ g <- dagitty('dag {
     
     forum_id -> author_diversity 
     forum_id -> proportion_deleted -> views
-    author_diversity  -> proportion_deleted <- 
+    author_diversity  -> proportion_deleted 
 }')
 
 plot(g)
@@ -91,25 +95,17 @@ plot(g)
 ## Methods
 
 ### removal of outliers
-```{r setup, include=FALSE}
-
-# data
-data <- read.csv("../data/sfn-sample.csv",
-                     sep = ",", 
-                     header = T)
-
-summary(data)
-
-
-
-
-  
-```
 
 
 ### Handling missing data 
 
-### Calculation of other group level variables from individual level variables
+### Calculation of additional variables 
+
+For the substantive questions we calculated some new variables as follows:
+* We extracted the 'year_started' of each topic as replacement for using the full 'startdate' which contains a lot more precise time than we need. 
+* the 'proportion_deleted' is the number of deleted divided by total posts in the topic.
+* The 'post_rate' is the number of posts divided by the 'duration' of the topic. If 'duration' is zero, the 'post_rate' was also assigned zero.
+
 
 ### Model building
 
@@ -118,31 +114,40 @@ summary(data)
 
 ### Univariate variable distributions
 
-For the qualitative variables, we found that there were many forum ids which were missing a categorization. 
+Figure \ref{fig:uni} shows the distribution of forum topics which fall into each category for the binary variables. This shows us that very few forum topics are deleted from view, closed, pinned or started by a banned author.
 
-```{r univariate, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs}Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of astericks."}
+```{r uni, fig.width=5, fig.height=5, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:uni} Univariate correlations of categorical variables."}
 theme_hw <- theme(plot.title = element_text(hjust = 0.5),
         #axis.text.x=element_blank(),
         axis.ticks.x=element_blank()
        # panel.grid.major =   element_line(colour = "gray",size=0.5)
   )
-p1 <-ggplot(data, aes(x= as.factor(not_deleted), y=state))+
-  geom_bar(stat="identity")#+theme_hw #+ ylab("Testosterone in pg/mL")
-p2 <-ggplot(data, aes(y=views, x= as.factor(not_deleted)))+
-  geom_boxplot()+theme_hw #+ ylab("Log(Testosterone in pg/mL)")
-p3 <-ggplot(data, aes(y=pinned, x= as.factor(not_deleted)))+
-  geom_boxplot()+theme_hw #+ ylab("Cortisol in nMol/L")
-p4 <-ggplot(data, aes(y=author_banned, x= as.factor(not_deleted)))+
-  geom_boxplot()+theme_hw #+ ylab("Log(cortisol in nMol/L)")
+p1 <-ggplot(data, aes(x= as.factor(not_deleted)))+
+  geom_bar()#+theme_hw #+ ylab("Testosterone in pg/mL")
+p2 <-ggplot(data, aes(x= as.factor(state)))+
+  geom_bar()+theme_hw #+ ylab("Log(Testosterone in pg/mL)")
+p3 <-ggplot(data, aes(x=as.factor(pinned)))+
+  geom_bar()+theme_hw #+ ylab("Cortisol in nMol/L")
+p4 <-ggplot(data, aes(x=as.factor(author_banned)))+
+  geom_bar()+theme_hw #+ ylab("Log(cortisol in nMol/L)")
 grid.arrange(p1, p2, 
              p3, p4, 
              ncol = 2)
 ```
+Additionally, although forum type is an important variable of interest, we found that there were many forum ids which were missing a categorization. This proportion is shown in the top bar of Figure \ref{fig:bar}. 
 
+```{r bar, fig.width=5, fig.height=5, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:bar} Breakdown of forums by topic, showing a portion of forums do not have any assigned topic."}
 
-### Bivariate distributions 
+p1 <-ggplot(data, aes(x=category))+
+  geom_bar() + coord_flip()#+theme_hw #+ ylab("Testosterone in pg/mL")
+grid.arrange(p1,  
+             ncol = 1)
+```
 
-We then examined the correlation of the other variables:
+We then examined the pairwise correlation of the continuous variables which is shown in Figure \ref{fig:pairs}. There appears to be no collinearity and generally only weak correlation among these variables, but we can observe the following trends:
+* Looking across the diagonal, all of the continuous variables with the exception of 'year_started' have a significant right skew.
+* 'posts' and 'views' correlate positively with author diversity, author experience and topic duration but negatively with 'year_started', 'proportion_deleted' and 'post_rate'. 
+* 
 
 ```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs}Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of astericks."}
 # check relationships of all variables of interest
@@ -151,16 +156,24 @@ vars <- colnames(data)[c(2:13)]
 #pairs(team_dat[vars], pch = 19,  lower.panel=NULL)
 #library("PerformanceAnalytics")
 #chart.Correlation(data[vars], pch=19)
-quant_vars <- colnames(data)[c(3:5,8,12:14, 16:17)]
+quant_vars <- colnames(data)[c(3:5,8,12, 14, 16:17)]
 #summary(data)
 library(GGally)
 ggpairs(data[,quant_vars])
 ```
 
-We performed 
 
 ## Q1. Relationship between views and posts
 
+We saw in Figure \ref{fig:pairs} that views and posts are weakly positively correlated. In figure \ref{fig:q1} we breaking this down by subforum for those topics which have a categorization. 
+
+```{r q1, fig.width=5, fig.height=5, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Breakdown of forums by topic, showing a portion of forums do not have any assigned topic."}
+
+p1 <-ggplot(data, aes(x=category))+
+  geom_bar() + coord_flip()#+theme_hw #+ ylab("Testosterone in pg/mL")
+grid.arrange(p1,  
+             ncol = 1)
+```
 
 ## Q2. Diverse discussions closed or deleted
 
@@ -185,229 +198,16 @@ Right away we can make the following observations about the key variables:
 
 Based on this we knew that in addition to final.performance, avg.log.testosterone, avg.log.cortisol and diversity.score we should consider whether to incorporate the four additional variables proportion.female, avg.age/age.variance, time.of.day, and team.size in our models.
 
-```{r dists, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs}Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of astericks."}
-# check relationships of all variables of interest
-vars <- colnames(team_dat)[c(2:4, 15:20)]
-#cor(team_dat)
-#pairs(team_dat[vars], pch = 19,  lower.panel=NULL)
-library("PerformanceAnalytics")
-chart.Correlation(team_dat[vars], histogram=TRUE, pch=19)
-```
-
-## Success at starting active discussions
-
-
-## Closing a topic
-
-Build a classification model to predict whether a given topic will be closed, using only covariates that would be available while it is active. (Total number of posts wouldn’t be available, for example, but the post rate, number of posts per unique author, or fraction of posts deleted would be.)
 
 ## Results
 
 The results discussed by the original study [@Akinola2018] include that:
 
 * considered in isolation, group diversity and testosterone are not significantly correlated with performance.
-* when group diversity was low, group testosterone significantly positively predicted performance at p < .01
-* when group diversity was relatively high, group testosterone significantly negatively predicted performance p < .01
+* when group diversity was l
 
 ### Model selection 
 
 Since the authors studied 2-way interactions, to choose the terms in the model we first performed model selection using best subsets and cross validation. We start off with all of the group level variables as depicted in Figure \ref{fig:pairs}, adding based on the causal graph and the authors' work the following interaction terms:
 
-* diversity.score:avg.log.testosterone
-* diversity.score:avg.log.cortisol 
 
-```{r}
-# https://rpubs.com/ssharma6/264822
-# https://stats.stackexchange.com/questions/138458/proper-variable-selection-use-only-training-data-or-full-data
-# http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
-# library(leaps)
-# 
-# set.seed(6)
-# ntot = nrow(team_dat)
-#train=sample(seq(ntot),ntot*0.8,replace=FALSE)
-# regfit.fwd=regsubsets(final.performance~ . + ,data=team_dat[train,vars],nvmax=40,
-#                       method = "exhaustive")
-# 
-# plot(regfit.fwd,scale="Cp")
-```
-It seems that we get some overfitting with Mallows' CP 
-
-```{r}
-# plot(regfit.fwd,scale="Cp")
-# val.errors=rep(NA,36)
-# x.test=model.matrix(final.performance~.^2, data=team_dat[-train,vars])# notice the -index!
-# for(i in 1:36){
-#   coefi=coef(regfit.fwd,id=i)
-#   pred=x.test[,names(coefi)]%*%coefi
-#   val.errors[i]=mean((team_dat[-train,"final.performance"]-pred)^2)
-# }
-# plot(sqrt(val.errors), ylab="Root MSE",pch=19,type="b")
-# points(sqrt(regfit.fwd$rss[-1]/length(train)),col="blue",pch=19,type="b")
-# legend("topright",legend=c("Training","Validation"),col=c("blue","black"),pch=19)
-```
-
-
-
-```{r}
-library(leaps)
-set.seed(12)
-folds=sample(rep(1:10,length=nrow(team_dat)))
-
-predict.regsubsets=function(object,newdata,id,...){
-  form=as.formula(object$call[[2]])
-  mat=model.matrix(form,newdata)
-  coefi=coef(object,id=id)
-  mat[,names(coefi)]%*%coefi
-}
-
-cv.errors=matrix(NA,10,11)
-for(k in 1:10){
-  # best fit on the train data
-  best.fit=regsubsets(final.performance~. + avg.log.testosterone:diversity.score + diversity.score:avg.log.cortisol, data=team_dat[folds!=k, vars],nvmax=40,method="exhaustive")
-  # performance on the test data
-  for(i in 1:10){
-    pred=predict(best.fit,team_dat[folds==k,vars],id=i)
-    cv.errors[k,i]=mean((team_dat$final.performance[folds==k]-pred)^2)
-  }
-}
-
-
-# Take the mean of over all folds for each model size
-mean_cv_errors = apply(cv.errors, 2, mean)
-
-# Find the model size with the smallest cross-validation error
-min = which.min(mean_cv_errors)
-
-# Plot the cross-validation error for each model size, highlight the min
-plot(mean_cv_errors, type='b')
-points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
-
-```
-It seems validation error is lowest around 8 terms.
-Now let's use best subset selection on the full data set in order to obtain the 8-predictor model.
-
-```{r}
-regfit_best = regsubsets(final.performance~. + avg.log.testosterone:diversity.score +diversity.score:avg.log.cortisol, data = team_dat[,vars], nvmax = 8)
-coef(regfit_best, 8)
-#coef(regfit.fwd, 4)
-```
-
-
-
-```{r}
-best.fit=regsubsets(final.performance~. + avg.log.testosterone:diversity.score + diversity.score:avg.log.cortisol, data=team_dat[,vars],nvmax=8,method="exhaustive")
-coef(best.fit, 8)
-coef(best.fit,5)
-```
-
-```{r}
-model <- lm(final.performance~ team.size+time.of.day+diversity.score+proportion.females+avg.log.testosterone+avg.log.cortisol+diversity.score:avg.log.testosterone+diversity.score:avg.log.cortisol, data = team_dat)
-summary(model)
-
-model <- lm(final.performance~ team.size+time.of.day+diversity.score+proportion.females+avg.log.testosterone+avg.log.cortisol+diversity.score:avg.log.testosterone+diversity.score:avg.log.cortisol, data = team_dat)
-summary(model)
-```
-
-
-
-
-```{r, fig.width=8, fig.height=4, warning=FALSE, echo=FALSE, fig.cap="."}
-
-
-
-mod = lm( final.performance ~ . - avg.age - proportion.females - time.of.day +age.variance +  avg.log.testosterone:diversity.score, data = team_dat[,vars])
-summary(mod)
-
-mod_t = lm( final.performance ~ . + avg.log.testosterone:diversity.score, data = team_dat[,vars])
-summary(mod_t)
-
-
-mod = lm( final.performance ~ time.of.day+ team.size +diversity.score+avg.log.testosterone + avg.age +   +avg.log.cortisol, data = team_dat[,vars])
-summary(mod)
-
-
-```
-
-
-
-### Q5: Effect of cortisol on relationship between diversity and performance
-We replot the correlation of cortisol with final.performance in Figure \ref{fig:cort} which seems weakly linear (adjusted r squared value < 0.2).
-
-```{r horm, fig.width=8, fig.height=4, warning=FALSE,  fig.cap="\\label{fig:cort} Levels of both testosterone and cortisol correlate with performance"}
-t <- cor(team_dat$avg.log.testosterone,  team_dat$final.performance)   
-c <- cor(team_dat$avg.log.cortisol,  team_dat$final.performance) 
-p1 <-ggscatter(team_dat, x = "avg.log.testosterone", y = "final.performance",
-               cor.coef = TRUE, add = "reg.line", cor.method = "pearson") 
-p2 <-ggscatter(team_dat, x = "avg.log.cortisol", y = "final.performance",
-               cor.coef = TRUE,  add = "reg.line", cor.method = "pearson")
-grid.arrange(p1, p2, ncol = 2,
-             top =textGrob("Relationship between hormone level and performance",
-                          gp=gpar(fontsize=12,font=3)))
-```
-
-```{r}
-mod_c <- lm(final.performance ~ avg.log.cortisol, data = team_dat)
-kable(mod_c$coef, digits = c(3,3,3,4), format = 'markdown')
-```
-Accordingly, when we fit the very simplest model of final.performance ~ avg.log.cortisol, we find a positive (0.1217) but not significant (p-value 0.56) coefficient as our scatterplots above may suggest.
-
-### Model with 
-
-This suggests stressed groups have better performance and stress changes the effect of diversity to negatively impact performance.
-
-### Conclusion
-
-Here we have analyzed demographic data and hormone measurements from groups of MBA students performing a competetive project, previously published by [@Akinola2018]. We sought to investigate the authors' hypothesis that group diversity has a testosterone-dependent effect on group performance and also to check whether cortisol levels had an effect on this relationship.
-
-Add:
-* practical significance i.e. units
-* 
-
-By building linear models of performance and testing the significance of the terms with an F-test, we have shown that although testosterone and diversity score alone do not predict performance, when they are both included in the model interaction between diversity and testosterone has a significant negative effect on performance (p < 0.01) implying that high diversity and high testosterone are antagonizing factors. Although stressed groups did not have significantly different performance, we also found that when controlling for diversity cortisol has similar effects. The interaction between cortisol and diversity also has a significant negative effect on performance (p < 0.05) implying that higher diversity and higher cortisol counteract each other. When looking at both hormone measurements simultaneously with diversity score, surprisingly we found that when accounting for cortisol, testosterone levels do not seem to have a significant effect on performance. Rather only the interaction of cortisol and testosterone together has a slight negative effect on performance (p < 0.01). However, the model we tested containing both hormones has a lower adjusted R squared than the model containing just testosterone. Overall, we do find that diversity is beneficial for performance, in the presence of low group-level testosterone. Additionally this analysis suggests that perhaps, stress has a role in group performance as well.
-
-Although we had some similar findings to the original study when examining diversity and testosterone, our results may not be directly comparable because of some differences in our methodology. Most prominently, [@Akinola2018] have used a faultline analysis to evaluate diversity whereas we have constructed a diversity score. As well, we have not included some of the variables that are present in the models which they tested e.g. proportion of females. We chose to discard these variables based upon our EDA and our reasoning about the relationship between variables collected in the study. Lastly we cannot compare our findings about cortisol because this was not discussed in depth in their original analysis.
-
-# Bibliography
-
-```{r cv}
-k = 10        # number of folds
-set.seed(12)   # set the random seed so we all get the same results
-
-x.test=model.matrix(final.performance~. + avg.log.testosterone:diversity.score +diversity.score:avg.log.cortisol, data=team_dat[-train,vars])
-
-
-# Assign each observation to a single fold
-folds = sample(1:k, nrow(team_dat), replace = TRUE)
-
-# Create a matrix to store the results of our upcoming calculations
-cv_errors = matrix(NA, k, ncol(x.test)-1, dimnames = list(NULL, paste(1:ncol(x.test)-1)))
-
-# Outer loop iterates over all folds
-for(j in 1:k){
-    
-    # The perform best subset selection on the full dataset, minus the jth fold
-    best_fit = regsubsets(Salary~., data = Hitters[folds!=j,], nvmax=19)
-    
-    # Inner loop iterates over each size i
-    for(i in 1:19){
-        
-        # Predict the values of the current fold from the "best subset" model on i predictors
-        pred = predict(best_fit, Hitters[folds==j,], id=i)
-        
-        # Calculate the MSE, store it in the matrix we created above
-        cv_errors[j,i] = mean((Hitters$Salary[folds==j]-pred)^2)
-    }
-
-}
-
-# Take the mean of over all folds for each model size
-mean_cv_errors = apply(cv_errors, 2, mean)
-
-# Find the model size with the smallest cross-validation error
-min = which.min(mean_cv_errors)
-
-# Plot the cross-validation error for each model size, highlight the min
-plot(mean_cv_errors, type='b')
-points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
-
-```
