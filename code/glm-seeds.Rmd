@@ -1,0 +1,116 @@
+---
+title: 'GLM Case Study: Seeds'
+author: "Alex Reinhart"
+date: "10/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This data comes from a factorial experiment on seeds. There are two varieties of seed, 1 and 2, and two types of extract the seeds can be treated with. The goal of the experiment was to figure out which combination of seed and extract leads to the highest rate of germination of the seeds.
+
+A factorial design means the researchers tested each possible combination in (nearly) equal numbers. Each row of the data set represents one group of seeds grown together, getting the same seeds and extract; we have the total number of seeds in that group and the number that successfully germinated.
+
+```{r}
+suppressMessages(library(dplyr))
+"../data/sfn-sample.csv"
+seeds <- read.table("../data/seeds.dat", header=TRUE) %>%
+  mutate(seed=factor(seed),
+         extract=factor(extract))
+
+head(seeds)
+```
+
+First, let's see if the good ol' Eyeball Test can detect any trends here.
+
+```{r}
+library(ggplot2)
+
+ggplot(seeds, aes(y = germinated/total, x=seed, color=extract)) + geom_boxplot() + theme_bw()
+```
+
+Looks like seed 1, extract 2 is the winning combination. But let's build a model.
+
+Questions:
+
+1. What kind of GLM should we build?
+2. Would it make sense to have quadratic or polynomial terms?
+3. Should we include an interaction?
+
+## The model
+
+```{r}
+seed_fit <- glm(cbind(germinated, total - germinated) ~ (extract + seed)^2, data=seeds, family=binomial)
+summary(seed_fit)
+```
+
+The conventional residual plots are a bit annoying:
+
+```{r, fig.width=8, fig.height=8}
+par(mfrow=c(2,2))
+plot(seed_fit)
+```
+
+Questions:
+
+1. Why are the dots all in vertical lines?
+2. Look at the scale on the standardized residuals. Does that look good or bad?
+3. If there's slope in the smoothed line (the red line), can we add terms to the model to help, using the covariates we have?
+
+## Overdispersion
+
+Let's check for overdispersion, after seeing that residual plot.
+
+We'll run a quasi-binomial model now.
+
+```{r}
+quasi_seed_fit <- glm(cbind(germinated, total - germinated) ~ (extract + seed)^2, data=seeds, family=quasibinomial)
+summary(quasi_seed_fit)
+```
+
+Running the residuals:
+
+```{r, fig.width=8, fig.height=8}
+par(mfrow=c(2,2))
+plot(quasi_seed_fit)
+```
+
+## Interpreting the results
+
+How do we examine the results of this model fit and make a claim about the best combination of seed and extract?
+
+We can't read this off from the coefficients and *p* values alone. The mean germination rate with extract 2 and seed 2, for example, requires us adding up the intercept, the extract coefficient, the seed coefficient, and the interaction coefficient, and to get a standard error for this quantity requires us to correctly account for the variance-covariance matrix of the parameter estimates.
+
+We have two choices. First, fabricate a dataset and make predictions:
+
+```{r}
+one_of_each <- data.frame(seed=factor(c(1, 1, 2, 2)), extract=factor(c(1, 2, 1, 2)))
+predict(quasi_seed_fit, newdata=one_of_each, type="response", se.fit=TRUE)
+```
+
+Row 2 seems to be the winner: seed 1, extract 2. That matches what we saw in the plot.
+
+Alternately, let's make a GLM fit where the coefficients tell us exactly what we want.
+
+```{r}
+cell_mean_fit <- glm(cbind(germinated, total - germinated) ~ interaction(seed, extract) - 1,
+                     data=seeds, family=quasibinomial)
+summary(cell_mean_fit)
+```
+
+Seed 1, extract 2 has the highest coefficient. We can get confidence intervals for those coefficients:
+
+```{r}
+intervals <- confint(cell_mean_fit)
+intervals
+```
+
+...and we can put these back on the probability scale:
+
+```{r}
+make.link("logit")$linkinv(intervals)
+```
+
+Question: Can we use the overlap or non-overlap of those confidence intervals to determine whether there are statistically significant differences in germination between the seeds and extracts?

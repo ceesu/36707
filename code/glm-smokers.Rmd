@@ -1,0 +1,166 @@
+---
+title: 'GLM Case Study: Smokers'
+author: "Alex Reinhart"
+date: "10/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This data comes from a study on smoking and the number of deaths due to coronary artery disease. Our goal: compare the risk of death for smokers versus non-smokers at age 40.
+
+Note that the ages here actually represent ten-year observation windows: age 40, for example, actually counts all person-years in the study between ages 35 and 44.
+
+```{r}
+smokers <- read.csv("smokers.csv")
+head(smokers)
+```
+
+## Some EDA
+
+Let's just look at the death rate per person/year at each age, and see what we're getting into.
+
+```{r}
+library(ggplot2)
+
+ggplot(smokers, aes(x=age, y=deaths/py, shape=smoke, color=smoke)) +
+  geom_point() +
+  labs(x="Age (years)", y="Deaths / person-year") +
+  theme_bw()
+```
+
+So there's a clear relationship with age, and possibly one with smoking -- though maybe it reverses with old age?
+
+Questions:
+
+1. What kind of GLM model should we try here? What distribution, and do we need to specify a specific link or offset?
+2. What *plot* can we make to determine what terms to add into the model (i.e. to see if the relationship is linear or not)?
+
+## Model checking plots
+
+If we use a Poisson GLM with age as a covariate and person-years as an offset, plus the standard log link, we're saying that:
+
+$$
+\text{deaths} \sim \operatorname{Poisson}(\text{person-years} \times \exp(\beta \times \text{age}))
+$$
+
+So let's see if the proportionality seems right: we'd expect a linear relationship between $\log(\text{deaths/person-years})$ and age.
+
+```{r}
+ggplot(smokers, aes(x=age, y=log(deaths/py), shape=smoke, color=smoke)) +
+  geom_point() +
+  labs(x="Age (years)", y="log(Deaths / person-year)") +
+  theme_bw()
+```
+
+Uh-oh!
+
+Questions:
+
+1. What terms can we consider adding to the model?
+2. What about interactions? Does the plot suggest any interactions?
+
+## Fit a Poisson model
+
+```{r}
+smoke_fit <- glm(deaths ~ smoke * age + smoke * I(age^2) + offset(log(py)),
+                 data=smokers, family=poisson(log))
+summary(smoke_fit)
+```
+
+Let's examine the residuals.
+
+```{r, fig.width=8, fig.height=8}
+par(mfrow=c(2,2))
+plot(smoke_fit)
+```
+
+## Answering the substantive question
+
+We'd like to compare the risk of death between smokers and non-smokers at age 40. Let's start with the naive way of doing this: make predictions.
+
+```{r}
+new_smokers <- data.frame(smoke=c("no", "yes"), age=c(40, 40), py=c(1,1))
+preds <- predict(smoke_fit, newdata=new_smokers, se.fit=TRUE, type="response")
+preds
+```
+
+There are our predictions. For one person-year, the expected mean number of deaths is given; the ratio between smokers and non-smokers is
+
+```{r}
+preds$fit[2] / preds$fit[1]
+```
+
+But it's not easy to make a confidence interval for this. The standard errors are not independent. Let's more closely examine the regression function -- specifically, the ratio between smokers and non-smokers when we set age = 40.
+
+$$
+\frac{\mathbb{E}[Y \mid \text{age} = 40, \text{smoker}]}{\mathbb{E}[Y \mid \text{age} = 40, \text{non}]}
+=
+\frac{\exp(\hat \beta_0 + \hat \beta_1 + 40 \hat \beta_2 + 1600 \hat \beta_3 + 40 \hat \beta_4 + 1600 \hat \beta_5)}
+{\exp(\hat \beta_0 + 40 \hat \beta_2 + 1600 \hat \beta_3)} = \exp(\hat \beta_1 + 40 \hat \beta_4 + 1600 \hat \beta_5)
+$$
+
+Hence the ratio can also be calculated as:
+
+```{r}
+coef_vec = c(0, 1, 0, 0, 40, 1600)
+
+exp(sum(coef_vec * coef(smoke_fit)))
+```
+
+How do we get the variance for this quantity?
+
+We know that $\operatorname{var}(aX) = a^2 \operatorname{var}(X)$. You may also recall that when you take the variance of a sum of random variables, you must account for their covariances (if they're not independent). The general rule for a vector $c$ and vector $\hat \beta$ is that $\operatorname(var)(c^T \hat \beta) = c^T \operatorname{var}(\hat \beta) c$. So:
+
+```{r}
+t(coef_vec) %*% vcov(smoke_fit) %*% coef_vec
+```
+
+is the variance (on the log scale, not the scale of the response!). Take the mean plus or minus two standard errors for a Wald confidence interval:
+
+```{r}
+se <- sqrt(t(coef_vec) %*% vcov(smoke_fit) %*% coef_vec)[1,1]
+
+bounds <- sum(coef_vec * coef(smoke_fit)) + c(-2, 2) * se
+bounds
+```
+
+Finally, we can exponentiate to put our confidence interval back on the right scale:
+
+```{r}
+exp(bounds)
+```
+
+That's pretty wide.
+
+## Model selection
+
+Suppose we had been interested in making a purely predictive model, rather than comparing rates, and had decided that we'd do model selection to achieve this.
+
+Questions:
+
+1. Why use model selection when we're making a predictive model? What would it get us?
+2. Why not do model selection if we were interested in comparing rates specifically?
+
+Let's suppose we picked stepwise selection. R supports doing stepwise selection on GLMs.
+
+```{r}
+step_smoke_fit <- step(smoke_fit)
+
+summary(step_smoke_fit)
+```
+
+So we've reduced the model by one parameter. What does that do to our confidence interval (warning! don't do this!)?
+
+```{r}
+coef_vec_step <- c(0, 1, 0, 0, 40)
+se_step <- sqrt(t(coef_vec_step) %*% vcov(step_smoke_fit) %*% coef_vec_step)[1,1]
+
+bounds_step <- sum(coef_vec_step * coef(step_smoke_fit)) + c(-2, 2) * se_step
+exp(bounds_step)
+
+```
+
+Question: Why can't I report this CI as my answer to the substantive question?
