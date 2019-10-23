@@ -15,8 +15,8 @@ A factorial design means the researchers tested each possible combination in (ne
 
 ```{r}
 suppressMessages(library(dplyr))
-"../data/sfn-sample.csv"
-seeds <- read.table("../data/seeds.dat", header=TRUE) %>%
+#"../data/sfn-sample.csv"
+seeds <- read.table("../data/seeds.dat.txt", header=TRUE) %>%
   mutate(seed=factor(seed),
          extract=factor(extract))
 
