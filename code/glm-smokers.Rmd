@@ -14,7 +14,7 @@ This data comes from a study on smoking and the number of deaths due to coronary
 Note that the ages here actually represent ten-year observation windows: age 40, for example, actually counts all person-years in the study between ages 35 and 44.
 
 ```{r}
-smokers <- read.csv("smokers.csv")
+smokers <- read.csv("../data/smokers.csv")
 head(smokers)
 ```
 

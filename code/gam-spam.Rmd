@@ -1,0 +1,140 @@
+---
+title: "GAMs - Spam"
+author: "Alex Reinhart"
+date: "10/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This example comes from *Elements of Statistical Learning*, 2nd ed., chapter 9, pages 300-304. It covers several thousand emails collected in the late 1990s at HP Labs. Each email had 57 features extracted, and our goal is to classify the emails as spam or not spam.
+
+The data is provided from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/spambase) as a CSV, unfortunately with no column headers -- column names are provided in a separate file. Basically, the first 48 columns are the frequencies (percentages) of words in each email that are specific words, such as "business" or "credit" or "free". The next 6 columns cound the frequencies of specific characters. The next few columns look at capitalization in the email, and the last column indicates if the email was spam (1) or not (0).
+
+```{r}
+spam <- read.csv("../data/gam-spam.csv", header=FALSE)
+
+nrow(spam)
+table(spam$V58)
+```
+
+Let's break this into training and test sets. We'll use a third of the data for training, two thirds for testing.
+
+```{r}
+training_rows <- sample.int(nrow(spam), round(nrow(spam) / 3))
+
+spam.train <- spam[training_rows, ]
+spam.test <- spam[-training_rows, ]
+```
+
+## Some EDA
+
+Let's do a bit of EDA on some of the word frequency variables. There are too many to look at all the plots, so we'll just eyeball a few:
+
+```{r}
+par(mfrow=c(2,2))
+hist(spam.train$V1, main="make")
+hist(spam.train$V24, main="money")
+hist(spam.train$V16, main="free")
+hist(spam.train$V20, main="credit")
+```
+
+These clearly have long tails. We'll use log transformations on them, for convenience.
+
+**Question:** How do we do log transformations when some values are 0?
+
+## Do the transformation
+
+I don't want to have to write out all 57 variables in the model fits, so it'll be easier to do all the transformations now.
+
+```{r}
+cols <- names(spam.train)[1:(length(spam.train) - 1)]
+
+for (col in cols) {
+  spam.train[col] <- log(0.1 + spam.train[[col]])
+  spam.test[col] <- log(0.1 + spam.test[[col]])
+}
+```
+
+Now let's try those plots again:
+
+```{r}
+par(mfrow=c(2,2))
+hist(spam.train$V1, main="make")
+hist(spam.train$V24, main="money")
+hist(spam.train$V16, main="free")
+hist(spam.train$V20, main="credit")
+```
+
+Still skewed (0-inflated!) but better.
+
+## Fitting a logistic baseline model
+
+Let's use an ordinary logistic regression as a baseline.
+
+```{r}
+logistic_fit <- glm(V58 ~ ., data=spam.train, family=binomial)
+```
+
+We get a warning message running this fit -- what does it mean?
+
+## Fitting a logistic GAM
+
+The [gam](https://cran.r-project.org/package=gam) package provides a `gam` function that works much like `glm`. Unfortunately making the model formula is a bit annoying; here, `s(variable)` means "smoothing spline of this variable":
+
+```{r}
+suppressMessages(library(gam))
+
+gam_formula <- as.formula(paste0("V58 ~ ", paste0("s(", cols, ")", collapse=" + ")))
+
+gam_fit <- gam(gam_formula, data=spam.train, family=binomial)
+
+summary(gam_fit)
+```
+
+The smoothing parameters for each smoothing spline were *not* selected in any way: each was chosen, by default, to have 4 effective degrees of freedom (the trace of the smoothing matrix, as you recall). We can pass a `df` argument to `s` if we want to adjust this.
+
+## Comparing errors
+
+We can get the predicted spam probabilities from both methods:
+
+```{r}
+predicted_glm <- predict(logistic_fit, newdata=spam.test, type="response")
+predicted_gam <- predict(gam_fit, newdata=spam.test, type="response")
+
+plot(predicted_glm, predicted_gam)
+```
+
+The models generally agree on the obvious cases, but can disagree quite a lot on cases in the middle.
+
+How about error rates?
+
+```{r}
+glm_error <- 1 - mean(spam.test$V58 == ifelse(predicted_glm >= 0.5, 1, 0))
+gam_error <- 1 - mean(spam.test$V58 == ifelse(predicted_gam >= 0.5, 1, 0))
+
+glm_error
+gam_error
+```
+
+## Interpreting results
+
+For simplicity, let's make a GAM that only uses the four variables we plotted earlier.
+
+```{r}
+smaller_fit <- gam_fit <- gam(V58 ~ s(V1) + s(V24) + s(V16) + s(V20), data=spam.train, family=binomial)
+
+par(mfrow=c(2,2))
+plot(smaller_fit)
+```
+
+Each row, from left top: make, money, free, credit. These plots show the nonparametric fits for each variable, with a rug plot showing the unique values of that variable. We can see the shapes of the estimated relationships.
+
+## How do we choose the smoothing?
+
+The `gam` package doesn't provide automated ways to set the smoothing parameters.
+
+The [mgcv](https://cran.r-project.org/package=mgcv) package does, using marginal likelihood or cross-validation to choose smoothing parameters for each variable. It has a `gam` function that works much like the function we just used, making it easy for you to get confused between the two packages. It is much more sophisticated than the `gam` package, and lets you fit more kinds of models -- though by default it uses regression splines instead of smoothing splines.
+
