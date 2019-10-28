@@ -147,6 +147,9 @@ num_significant <- numeric(length(num_variables))
 # How many times should we try?
 num_trials <- 50
 
+# what is r squared?
+rsq <- numeric(length(num_variables))
+
 for (jj in seq_along(num_variables)) {
   p <- num_variables[jj]
 
@@ -156,20 +159,23 @@ for (jj in seq_along(num_variables)) {
     # Don't bother using generate_Y, because beta is 0. It would just do a matrix
     # multiplication with 0 for no purpose.
     Y <- generate_error(X, sigma)
-  
-    fit <- lm(Y ~ ., data=X)
     
+    fit <- lm(Y ~ ., data=X)
     # stepwise regression 
     #step_fit <- step(fit, trace=0) # do stepwise regression
-  
+    
+    # calculate r squared
+    rsq[jj] <- rsq[jj]+ summary(fit)$r.squared
+    
     #if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
-    if (length(coef(fit)) > 1 && f_p_value(fit) <= 0.05) {
-      num_significant[jj] <- num_significant[jj] + 1
-    }
+    # if (length(coef(fit)) > 1 && f_p_value(fit) <= 0.05) {
+    #   num_significant[jj] <- num_significant[jj] + 1
+    # }
   }
 }
 
-plot(num_variables, num_significant / num_trials,
+rsq <- rsq/num_trials # take the average of all the r squareds
+plot(num_variables,rsq,  #num_significant / num_trials,
      xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
 ```
 
@@ -184,12 +190,12 @@ Now, some questions. Answer these **before** running any more simulations:
 
 Answers:
 1. We will not, because where stepwise selection would pick out the best variables for every number of variables, in this case there's a random chance that any of the variables at each step would be found as a significant explanatory variable.
-2. It will increase because more variables are able to explain more of the varation just by chance. 
+2. It does seem to increase because more variables are able to explain more of the varation just by chance. 
 
 Now adjust the simulations above and write what you find:
 
 1. It seems like the fraction of falsely rejected nulls does not increase with hte number of variables included, and the relationship is noisier rather than linear. In general as the number of variables increases, 
-2. It will increase because more variables are able to explain more of the varation just by chance. 
+2. It seems like it does increase linearly and consistently with number of variables.
 
 ## Non-normal errors
 
@@ -204,7 +210,8 @@ generate_error <- function(X, sigma) {
 }
 ```
 
-What does this look like in a QQ plot? Run this a few times to see some examples:
+What does this look like in a QQ plot? Run this a few times to see some examples.
+ Ans: there are outlier residuals at the two ends of the qq plot.
 
 ```{r}
 data <- rt(100, df=2)
@@ -218,7 +225,7 @@ Let's fit models at different sample sizes.
 sigma <- 0.5
 
 # Sample size to try -- needs to be bigger than the number of variables
-N <- 100
+N <- seq(1, 40, by=2)
 
 # How many variables to use in our model
 num_variables <- seq(1, 40, by=2)
@@ -229,8 +236,12 @@ num_significant <- numeric(length(num_variables))
 # How many times should we try?
 num_trials <- 50
 
+# try to conform to hw standards?
+p <- 3
+N <- 
+
 for (jj in seq_along(num_variables)) {
-  p <- num_variables[jj]
+  #p <- num_variables[jj]
 
   for (ii in 1:num_trials) {
     X <- generate_X(N, p)
@@ -240,7 +251,6 @@ for (jj in seq_along(num_variables)) {
     Y <- generate_error(X, sigma)
   
     fit <- lm(Y ~ ., data=X)
-    step_fit <- step(fit, trace=0) # do stepwise regression
 
     if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
       num_significant[jj] <- num_significant[jj] + 1
@@ -251,3 +261,10 @@ for (jj in seq_along(num_variables)) {
 plot(num_variables, num_significant / num_trials,
      xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
 ```
+
+Conduct simulations with p = 3 and N ranging from the smallest possible value to larger values, say N = 500. Look at the distribution of F test pvalues in each situation, both with t-distributed errors and with normally-distributed errors. (Ensure you scale the t distribution so it has the same standard deviation as the normal distribution!)
+
+1. Do you observe any differences in the behavior of the hypothesis tests? 
+
+2. What do the effects of non-normality appear to be on the F test?
+
