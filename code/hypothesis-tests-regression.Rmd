@@ -27,9 +27,8 @@ generate_X <- function(N, p) {
 Here are functions to generate Y from X using beta:
 
 ```{r}
-# Generate errors for all X. Takes X as an argument; in a correctly specified model,
-# the error doesn't depend on X, but we might want to simulate situations where it does.
-generate_error <- function(X, sigma) {
+c
+generate_error_n <- function(X, sigma) {
   return(sigma * rnorm(nrow(X)))
 }
 
@@ -205,13 +204,13 @@ We can make our errors be heavy-tailed by using a *t* distribution:
 
 ```{r}
 # Generate errors for all X. The errors are t-distributed with 2 degrees of freedom.
-generate_error <- function(X, sigma) {
-  return(sigma * rt(nrow(X), df=2))
+generate_error_t <- function(X, sigma) {
+  return(sigma * rt(nrow(X), df=2)) # rt generates random deviates.
 }
 ```
 
 What does this look like in a QQ plot? Run this a few times to see some examples.
- Ans: there are outlier residuals at the two ends of the qq plot.
+ Ans: there are outlier residuals at the two ends of the qq plot. 
 
 ```{r}
 data <- rt(100, df=2)
@@ -219,52 +218,99 @@ qqnorm(data)
 qqline(data)
 ```
 
-Let's fit models at different sample sizes.
+Let's fit models at different sample sizes to find distribution of pvals:
 
 ```{r}
 sigma <- 0.5
 
-# Sample size to try -- needs to be bigger than the number of variables
-N <- seq(1, 40, by=2)
-
 # How many variables to use in our model
-num_variables <- seq(1, 40, by=2)
-
-# For each number of variables, what fraction of the tests were significant?
-num_significant <- numeric(length(num_variables))
+p <- 3
+N <- c(5, 300) # try a large N and small N
 
 # How many times should we try?
 num_trials <- 50
 
-# try to conform to hw standards?
-p <- 3
-N <- 
-
-for (jj in seq_along(num_variables)) {
-  #p <- num_variables[jj]
-
+for (jj in N) {
+  X <- generate_X(jj, p)
+  pvals_tdist <- numeric(length(num_trials))
+  pvals_ndist <- numeric(length(num_trials))
   for (ii in 1:num_trials) {
-    X <- generate_X(N, p)
+    Y_tdist <- generate_error_t(X, sigma)*sqrt(jj) #scale t distribution so it has the same standard deviation 
+    Y_ndist <- generate_error_n(X, sigma)
+    fit_t <- lm(Y_tdist ~ ., data=X)
+    fit_n <- lm(Y_ndist ~ ., data=X)
     
-    # Don't bother using generate_Y, because beta is 0. It would just do a matrix
-    # multiplication with 0 for no purpose.
-    Y <- generate_error(X, sigma)
-  
-    fit <- lm(Y ~ ., data=X)
-
-    if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
-      num_significant[jj] <- num_significant[jj] + 1
-    }
+    pvals_tdist[ii] <- fit_t$
+    rsq[jj] <- rsq[jj]+ summary(fit)$r.squared
+    
   }
+  # now make a plot of the pvals.
+  d <- density(pvals_tdist)
+  d2 <- density(pvals_ndist)
+  
+  plot(d)
+  lines(d2)
+  title(main = paste0("pval distribution for N=", N))
+}
+```
+
+
+Now plot the number of rejected nulls:
+
+```{r}
+sigma <- 0.5
+
+# How many variables to use in our model
+p <- 3
+N <- seq(p, 500, by=5) # Sample size
+pvals_tdist <- numeric(length(N))
+pvals_ndist <- numeric(length(N))
+
+for (jj in N) {
+  #p <- num_variables[jj]
+  X <- generate_X(jj, p)
+  
+  Y_tdist <- generate_error_t(X, sigma)*sqrt(jj) #scale t distribution so it has the same standard deviation 
+  Y_ndist <- generate_error_n(X, sigma)
+  fit_t <- lm(Y ~ ., data=X)
+  fit_n <- lm(Y ~ ., data=X)
+  
+  # extract f test pval from each of the fits. 
+  
+  # for (ii in 1:num_trials) {
+  #   X <- generate_X(N, p)
+  #   
+  #   # Don't bother using generate_Y, because beta is 0. It would just do a matrix
+  #   # multiplication with 0 for no purpose.
+  #   Y <- generate_error(X, sigma)
+  # 
+  #   fit <- lm(Y ~ ., data=X)
+  # 
+  #   # if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
+  #   #   num_significant[jj] <- num_significant[jj] + 1
+  #   # }
+  # }
 }
 
-plot(num_variables, num_significant / num_trials,
+# Do you observe any differences in the behavior of the hypothesis test?
+d <- density(pvals_tdist)
+d2 <- density(pvals_ndist)
+plot(d)
+plot(t)
+     #xlab="N", ylab="Density")
+
+# What do the effects of non-normality appear to be on the F test?
+plot(num_variables,rsq,  num_significant / num_trials,
      xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
+
 ```
 
 Conduct simulations with p = 3 and N ranging from the smallest possible value to larger values, say N = 500. Look at the distribution of F test pvalues in each situation, both with t-distributed errors and with normally-distributed errors. (Ensure you scale the t distribution so it has the same standard deviation as the normal distribution!)
 
 1. Do you observe any differences in the behavior of the hypothesis tests? 
 
+With p = 3 and N ranging from 1 to 500, I plotted the F-test pvalues for each fit (in the model with tdistributed errors, and in the model with normally distributed errors) on the same graph. As N increases, the hypothesis tests become more powerful as measured by teh number of significant p-values found. 
+
 2. What do the effects of non-normality appear to be on the F test?
 
+Looking at the same plot, it appears the pvalues from fitting teh t-distributed errors are 
