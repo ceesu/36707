@@ -130,7 +130,7 @@ Crucially, we'll add more variables -- variables that still have no true effect.
 
 Question: If we add more variables, meaning more columns in *X*, but none of them are correlated with *Y*, what will happen to the *F* test after stepwise selection? Will it conclude that there are significant effects?
 
-Answer: It will, because we are able to overfit to the data with the extra variables.
+Answer: It will conclude that there are significant effects, because we are able to pick variables which have small p-values. As the number of variables increases the number of significant effects will increase linearly.
 
 ```{r}
 sigma <- 0.5
@@ -158,9 +158,12 @@ for (jj in seq_along(num_variables)) {
     Y <- generate_error(X, sigma)
   
     fit <- lm(Y ~ ., data=X)
-    step_fit <- step(fit, trace=0) # do stepwise regression
-
-    if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
+    
+    # stepwise regression 
+    #step_fit <- step(fit, trace=0) # do stepwise regression
+  
+    #if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
+    if (length(coef(fit)) > 1 && f_p_value(fit) <= 0.05) {
       num_significant[jj] <- num_significant[jj] + 1
     }
   }
@@ -170,7 +173,7 @@ plot(num_variables, num_significant / num_trials,
      xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
 ```
 
-It seems like from the plot that thefraction of nulls falsely rejected increases almost linearly with ht enumber of variables.
+It seems like from the plot that the fraction of nulls falsely rejected increases almost linearly with the number of variables.
 
 ### Questions for you
 
@@ -180,12 +183,12 @@ Now, some questions. Answer these **before** running any more simulations:
 2. The $R^2$ statistic summarizes the amount of variance in *Y* that is explained by the columns in *X*. In this simulation, none of the variation in *Y* is truly related to *X*, but some variation will be related by chance. How will $R^2$ vary with the number of variables in the model?
 
 Answers:
-1. We will not, because some of them are going to 
+1. We will not, because where stepwise selection would pick out the best variables for every number of variables, in this case there's a random chance that any of the variables at each step would be found as a significant explanatory variable.
 2. It will increase because more variables are able to explain more of the varation just by chance. 
 
 Now adjust the simulations above and write what you find:
 
-1. We will not because 
+1. It seems like the fraction of falsely rejected nulls does not increase with hte number of variables included, and the relationship is noisier rather than linear. In general as the number of variables increases, 
 2. It will increase because more variables are able to explain more of the varation just by chance. 
 
 ## Non-normal errors
