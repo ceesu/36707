@@ -28,7 +28,7 @@ Here are functions to generate Y from X using beta:
 
 ```{r}
 c
-generate_error_n <- function(X, sigma) {
+generate_error <- function(X, sigma) {
   return(sigma * rnorm(nrow(X)))
 }
 
@@ -221,6 +221,15 @@ qqline(data)
 Let's fit models at different sample sizes to find distribution of pvals:
 
 ```{r}
+# https://stackoverflow.com/questions/5587676/pull-out-p-values-and-r-squared-from-a-linear-regression
+lmp <- function (modelobject) {
+    if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+    f <- summary(modelobject)$fstatistic
+    p <- pf(f[1],f[2],f[3],lower.tail=F)
+    attributes(p) <- NULL
+    return(p)
+}
+
 sigma <- 0.5
 
 # How many variables to use in our model
@@ -236,24 +245,23 @@ for (jj in N) {
   pvals_ndist <- numeric(length(num_trials))
   for (ii in 1:num_trials) {
     Y_tdist <- generate_error_t(X, sigma)*sqrt(jj) #scale t distribution so it has the same standard deviation 
-    Y_ndist <- generate_error_n(X, sigma)
+    Y_ndist <- generate_error(X, sigma)
     fit_t <- lm(Y_tdist ~ ., data=X)
     fit_n <- lm(Y_ndist ~ ., data=X)
     
-    pvals_tdist[ii] <- fit_t$
-    rsq[jj] <- rsq[jj]+ summary(fit)$r.squared
-    
+    pvals_tdist[ii] <- lmp(fit_t)
+    pvals_ndist[ii] <- lmp(fit_n)
   }
   # now make a plot of the pvals.
   d <- density(pvals_tdist)
   d2 <- density(pvals_ndist)
   
-  plot(d)
+  plot(d, col = "red", main = paste0("pval distribution for N=", jj))
   lines(d2)
-  title(main = paste0("pval distribution for N=", N))
+ legend = c("bottomleft", legend= c("tdist", "ndist"))
+ # title(main = paste0("pval distribution for N=", jj))
 }
 ```
-
 
 Now plot the number of rejected nulls:
 
@@ -263,15 +271,15 @@ sigma <- 0.5
 # How many variables to use in our model
 p <- 3
 N <- seq(p, 500, by=5) # Sample size
-pvals_tdist <- numeric(length(N))
-pvals_ndist <- numeric(length(N))
+n_pvals_tdist <- numeric(length(N))
+n_pvals_ndist <- numeric(length(N))
 
 for (jj in N) {
   #p <- num_variables[jj]
   X <- generate_X(jj, p)
   
   Y_tdist <- generate_error_t(X, sigma)*sqrt(jj) #scale t distribution so it has the same standard deviation 
-  Y_ndist <- generate_error_n(X, sigma)
+  Y_ndist <- generate_error(X, sigma)
   fit_t <- lm(Y ~ ., data=X)
   fit_n <- lm(Y ~ ., data=X)
   
@@ -309,7 +317,7 @@ Conduct simulations with p = 3 and N ranging from the smallest possible value to
 
 1. Do you observe any differences in the behavior of the hypothesis tests? 
 
-With p = 3 and N ranging from 1 to 500, I plotted the F-test pvalues for each fit (in the model with tdistributed errors, and in the model with normally distributed errors) on the same graph. As N increases, the hypothesis tests become more powerful as measured by teh number of significant p-values found. 
+With p = 3 and N as 5 or 500, I plotted the distribution of F test pvalues for each fit (in the model with tdistributed errors, and in the model with normally distributed errors) on the same graph. As N increases, the distribution is similar.
 
 2. What do the effects of non-normality appear to be on the F test?
 
