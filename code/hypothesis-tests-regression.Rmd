@@ -244,13 +244,14 @@ for (jj in N) {
   pvals_tdist <- numeric(length(num_trials))
   pvals_ndist <- numeric(length(num_trials))
   for (ii in 1:num_trials) {
-    Y_tdist <- generate_error_t(X, sigma)*sqrt(jj) #scale t distribution so it has the same standard deviation 
+    Y_tdist <- generate_error_t(X, sigma)/sqrt(jj)
+    #Y_tdist <- Y_tdist/max(Y_tdist) #scale t distribution so it has the same standard deviation
     Y_ndist <- generate_error(X, sigma)
     fit_t <- lm(Y_tdist ~ ., data=X)
     fit_n <- lm(Y_ndist ~ ., data=X)
     
-    pvals_tdist[ii] <- lmp(fit_t)
-    pvals_ndist[ii] <- lmp(fit_n)
+    pvals_tdist[ii] <- f_p_value(fit_t)
+    pvals_ndist[ii] <- f_p_value(fit_n)
   }
   # now make a plot of the pvals.
   d <- density(pvals_tdist)
@@ -268,56 +269,51 @@ Now plot the number of rejected nulls:
 ```{r}
 sigma <- 0.5
 
+# For each number of variables, what fraction of the tests were significant?
+num_significant <- numeric(length(num_variables))
+num_significant_t <- numeric(length(num_variables))
 # How many variables to use in our model
 p <- 3
 N <- seq(p, 500, by=5) # Sample size
 n_pvals_tdist <- numeric(length(N))
 n_pvals_ndist <- numeric(length(N))
 
-for (jj in N) {
-  #p <- num_variables[jj]
-  X <- generate_X(jj, p)
-  
-  Y_tdist <- generate_error_t(X, sigma)*sqrt(jj) #scale t distribution so it has the same standard deviation 
-  Y_ndist <- generate_error(X, sigma)
-  fit_t <- lm(Y ~ ., data=X)
-  fit_n <- lm(Y ~ ., data=X)
-  
-  # extract f test pval from each of the fits. 
-  
-  # for (ii in 1:num_trials) {
-  #   X <- generate_X(N, p)
-  #   
-  #   # Don't bother using generate_Y, because beta is 0. It would just do a matrix
-  #   # multiplication with 0 for no purpose.
-  #   Y <- generate_error(X, sigma)
-  # 
-  #   fit <- lm(Y ~ ., data=X)
-  # 
-  #   # if (length(coef(step_fit)) > 1 && f_p_value(step_fit) <= 0.05) {
-  #   #   num_significant[jj] <- num_significant[jj] + 1
-  #   # }
-  # }
+for (jj in length(N)) {
+  n <- N[jj]
+  for (ii in 1:num_trials) {
+    X <- generate_X(n, p)
+    
+    Y_tdist <- generate_error_t(X, sigma)/sqrt(n)#scale t distribution so it has the same standard deviation 
+    Y_ndist <- generate_error(X, sigma)
+    
+    fit_t <- lm(Y_tdist ~ ., data=X)
+    fit_n <- lm(Y_ndist ~ ., data=X)
+
+    if (length(coef(fit_t)) > 1 && f_p_value(fit_t) <= 0.05) {
+      num_significant[jj] <- num_significant[jj] + 1
+    }
+    if (length(coef(fit_n)) > 1 && f_p_value(fit_n) <= 0.05) {
+      num_significant_t[jj] <- num_significant[jj] + 1
+    }
+  }
 }
 
 # Do you observe any differences in the behavior of the hypothesis test?
-d <- density(pvals_tdist)
-d2 <- density(pvals_ndist)
-plot(d)
-plot(t)
      #xlab="N", ylab="Density")
 
 # What do the effects of non-normality appear to be on the F test?
-plot(num_variables,rsq,  num_significant / num_trials,
+plot(N, num_significant_t / num_trials,
      xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
+lines(N,num_significant / num_trials)
+ legend = c("bottomleft", legend= c("tdist", "ndist"))
 
 ```
 
-Conduct simulations with p = 3 and N ranging from the smallest possible value to larger values, say N = 500. Look at the distribution of F test pvalues in each situation, both with t-distributed errors and with normally-distributed errors. (Ensure you scale the t distribution so it has the same standard deviation as the normal distribution!)
+**Conduct simulations with p = 3 and N ranging from the smallest possible value to larger values, say N = 500. Look at the distribution of F test pvalues in each situation, both with t-distributed errors and with normally-distributed errors. (Ensure you scale the t distribution so it has the same standard deviation as the normal distribution!)**
 
 1. Do you observe any differences in the behavior of the hypothesis tests? 
 
-With p = 3 and N as 5 or 500, I plotted the distribution of F test pvalues for each fit (in the model with tdistributed errors, and in the model with normally distributed errors) on the same graph. As N increases, the distribution is similar.
+With p = 3 and N as 5 or 500, I plotted the distribution of F test pvalues for each fit (in the model with tdistributed errors, and in the model with normally distributed errors) on the same graph. With N=500, the distributions are similar but they are a bit more different at N=5.
 
 2. What do the effects of non-normality appear to be on the F test?
 
