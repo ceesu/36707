@@ -1,0 +1,155 @@
+---
+title: "Generalized linear models"
+author: "Alex Reinhart"
+date: "10/7/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Binomial regression
+
+Consider an example from *The Statistical Sleuth*. In the Krunnit Islands archipelago, researchers surveyed bird species in 1949 and 1959. The number of bird species found on each island in 1949 is the number of species at risk of extinction, and those not found in 1959 are considered extinct in this data. We also know the size of each island (units not given):
+
+```{r}
+library(Sleuth3)
+head(case2101)
+```
+
+Suppose the number of extinctions is modeled as $\text{Extinct} \sim \operatorname{Binomial}(\text{AtRisk}, f(X \beta))$.
+
+To run the model, we can specify the response as a "two-column matrix with the columns giving the numbers of successes and failures". We'll count "successes" as extinctions.
+
+```{r}
+response <- cbind(case2101$Extinct, case2101$AtRisk - case2101$Extinct)
+extinct.fit <- glm(response ~ Area, data=case2101, family=binomial(link=logit))
+summary(extinct.fit)
+```
+
+How do we interpret this?
+
+If an island's area increases by one unit, the binomial log-odds change by `r round(coef(extinct.fit)["Area"], 3)` units. That corresponds to multiplying the odds by `r round(exp(coef(extinct.fit)["Area"]), 3)`. Apparently, larger islands have a smaller risk of extinction.
+
+We need not use the logistic link every time. We could also use the probit link, for example, which is the CDF of a standard normal distribution:
+
+```{r}
+probit.fit <- glm(response ~ Area, data=case2101, family=binomial(link=probit))
+summary(probit.fit)
+```
+
+If we plot the predictions made by these two models against each other, we see the two links lead to very similar results:
+
+```{r}
+plot(predict(extinct.fit, type="response"),
+     predict(probit.fit, type="response"),
+     xlab="Logistic fit",
+     ylab="Probit fit")
+```
+
+That makes sense, because the link functions are pretty similar to each other in shape.
+
+```{r}
+logit <- make.link("logit")$linkinv
+probit <- make.link("probit")$linkinv
+
+xs <- seq(-8, 8, length.out = 200)
+
+plot(xs, logit(xs), type="l", lwd=2,
+     xlab="X beta", ylab="Probability")
+lines(xs, probit(xs), lty=2, lwd=2)
+```
+
+R also supports the cauchit (Cauchy CDF) link, the complementary log-log link (cloglog, the cdf of the log-Weibull distribution), and the log link.
+
+### Residuals
+
+Since the counts are fairly large, the residuals from this model can actually be meaningful.
+
+```{r, fig.height=8, fig.width=8}
+par(mfrow=c(2,2))
+plot(extinct.fit)
+```
+
+There seems to be clear misspecification in the residual plots (though it's hard to tell with so few data points!). Let's look at the same plot if we add a quadratic term:
+
+```{r, fig.height=8, fig.width=8}
+extinct.fit.2 <- glm(response ~ poly(Area, degree=2), data=case2101,
+                     family=binomial(link=logit))
+
+par(mfrow=c(2,2))
+plot(extinct.fit.2)
+```
+
+That's... not a whole lot better, suggesting something else is wrong with our modeling. Plotting residuals versus area for the original model, we get
+
+```{r}
+plot(case2101$Area, residuals(extinct.fit.2))
+```
+
+Possibly these three very large islands are dictating the whole fit, since they're very influential. Let's log-transform the area instead:
+
+```{r, fig.height=8, fig.width=8}
+extinct.fit.log <- glm(response ~ log(Area), data=case2101,
+                       family=binomial(link=logit))
+
+par(mfrow=c(2,2))
+plot(extinct.fit.log)
+```
+
+Those are much nicer residuals.
+
+### Comparing fits
+
+How do we decide which link function is better? How do we decide which model is better in general, when we might have different sets of covariates?
+
+This dataset only has `r nrow(case2101)` observations, so cross-validation won't be terribly easy; in fact, any method of estimating generalization error won't have much to go on. But ignoring that problem, we could use a couple things.
+
+First, AIC and BIC are of course available for GLMs:
+
+```{r}
+AIC(extinct.fit)
+AIC(probit.fit)
+AIC(extinct.fit.log)
+```
+
+Recall that R's definition of AIC is that smaller is better, but a difference of only `r round(AIC(probit.fit) - AIC(extinct.fit), 3)` (between probit and logit) is not very big or meaningful. 
+
+On the other hand, the gap between logit and the logit model using $\log(\text{Area})$ is much more dramatic, and suggests this model fits substantially better.
+
+## Poisson regression
+
+Another example from *The Statistical Sleuth* covers the mating success of male African elephants. Young male elephants have to compete with older, larger, stronger elephants for mates. This data was collected in the 1980s to understand how African elephants mate.
+
+```{r}
+head(case2201)
+```
+
+Each row is one elephant, and we have its age and the number of successful matings that elephant had over a period of 8 years. (The age is the elephant's age at the beginning of the 8 years.)
+
+We would like to model this as $\text{Matings} \sim \operatorname{Poisson}(\exp(X \beta))$, which is a Poisson GLM with the log link. (Yes, that seems backwards, but the link function is defined to be the inverse of what we'd expect it to be.)
+
+```{r}
+elephant.fit <- glm(Matings ~ Age, data=case2201, family=poisson(link=log))
+summary(elephant.fit)
+```
+
+The coefficient interpretation: For each year of age, the log of an elephant's mean number of matings increases by `r round(coef(elephant.fit)["Age"], 3)`, corresponding to the mean being multiplied by `r round(exp(coef(elephant.fit)["Age"]), 3)`. Let's see how that looks as a function of age:
+
+```{r}
+ages <- seq(min(case2201$Age), max(case2201$Age), length.out=100)
+newdata <- data.frame(Age=ages)
+
+plot(ages, predict(elephant.fit, newdata=newdata, type="response"),
+     xlab="Age", ylab="Predicted mean matings", type="l")
+```
+
+Let's examine the residuals.
+
+```{r, fig.height=8, fig.width=8}
+par(mfrow=c(2,2))
+plot(elephant.fit)
+```
+
+Not terrible!

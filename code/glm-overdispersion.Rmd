@@ -1,0 +1,122 @@
+---
+title: "Overdispersion in GLMs"
+author: "Alex Reinhart"
+date: "10/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Quasi-Poisson models
+
+Horseshoe crabs are weird. This dataset is about female horseshoe crabs on an island in the Gulf of Mexico. When it's time to breed, the female migrates to the shore and mates with a male. Afterward, she digs into the sand to lay her eggs, which are fertilized externally by the male. Other male crabs may gather around and try to fertilize the eggs -- these are called *satellites*.
+
+The data records the number of satellites for each female, with covariates including the female crab's color, spine condition, weight (kg), and carapace width (cm). A brief key:
+
+Color:
+1. Medium light
+2. Medium
+3. Medium dark
+4. Dark
+
+Spine condition:
+
+1. Both good
+2. One worn or broken
+3. Both worn or broken
+
+```{r}
+crabs <- read.table("Crabs.dat", header = TRUE)
+```
+
+Let's start with a simple model of satellites as a function of weight:
+
+```{r}
+crab_fit <- glm(y ~ weight, family=poisson, data=crabs) # defaults to log link
+summary(crab_fit)
+```
+
+Let's also examine the residual plots:
+
+```{r, fig.width=8, fig.height=8}
+par(mfrow=c(2,2))
+plot(crab_fit)
+```
+
+We can ask R to do a quasi-Poisson model instead:
+
+```{r}
+quasi_crab_fit <- glm(y ~ weight, family=quasipoisson, data=crabs)
+summary(quasi_crab_fit)
+```
+
+Notice:
+
+- The coefficient estimates did not change.
+- The dispersion parameter is estimated to be 3.134, which is quite large -- three times more variance than we modeled.
+- There's no longer an AIC, because this model was not fit completely through maximum likelihood, so comparisons based on likelihood don't make sense.
+
+Let's look at the new diagnostics:
+
+```{r, fig.width=8, fig.height=8}
+par(mfrow=c(2,2))
+plot(quasi_crab_fit)
+```
+
+They still look quite bad. In fact, examining the number of satellites marginally suggests the reason:
+
+```{r}
+hist(crabs$y, xlab="Number of satellites", breaks=0:16, main="")
+```
+
+This suggests -- though we'd have to look at the distribution of Y given weight, not Y marginally, to be sure -- that the count is *zero inflated*. The data may be arising from a mixture distribution: some females don't attract any satellites (maybe they're in a hard-to-reach spot on the beach), while other females attract a Poisson-distributed number of satellites.
+
+Zero inflation happens quite often in count data. You can think of it as being the result of a latent binary variable: some people/cases/crabs are in a group that always gets 0 as the response, whereas other people/cases/crabs are in a group that gets a Poisson-distributed response.
+
+For example, I could do a survey of students and ask how many alcoholic drinks they've had in the past week. Some people drink regularly and have some random number of drinks in the past week; other people hardly ever drink and are essentially guaranteed to report 0 drinks.
+
+Zero-inflated models try to account for this latent variable. We won't get into the details in this class.
+
+## A more convincing example
+
+In the previous example, accounting for over-dispersion didn't really help, because the problem was really zero inflation.
+
+Let's consider another dataset. This is from an experiment on female rats raised with iron-deficient diets. The rats were randomly assigned to four groups: group 1 received injections of a placebo, while groups 2 through 4 received injections of an iron supplement on different schedules. The rats then mated and became pregnant, and the researchers were interested in how many of the baby rats in their litter survived to birth rather than dying during pregnancy. This would help show the effects of iron deficiency.
+
+```{r}
+rats <- read.table("Rats.dat", header=TRUE)
+```
+
+The variables are h (hemoglobin level of the mother, related to iron levels), n (the number of baby rats in the litter), s (the number of baby rats that died before birth), and group (the treatment group).
+
+```{r}
+rat_resp <- cbind(rats$s, rats$n - rats$s)
+rats$placebo <- factor(ifelse(rats$group == 1, "Yes", "No"))
+rat_fit <- glm(rat_resp ~ h + placebo, data=rats, family=binomial)
+summary(rat_fit)
+```
+
+Notice the y axis scale on the *standardized* residual plot:
+
+```{r, fig.width=8, fig.height=8}
+par(mfrow=c(2,2))
+plot(rat_fit)
+```
+
+That suggests something is wrong -- the standardized residuals clearly do not have variance 1, as they are supposed to. Let's try a quasi-binomial fit instead.
+
+```{r}
+quasi_rat_fit <- glm(rat_resp ~ h + placebo, data=rats, family=quasibinomial)
+summary(quasi_rat_fit)
+```
+
+Notice, again, that the coefficient estimates did not change, but our standard errors increased, and we no longer have an AIC.
+
+The estimated dispersion parameter is pretty big, and the residual plots are toned down, but not perfect:
+
+```{r, fig.width=8, fig.height=8}
+par(mfrow=c(2,2))
+plot(quasi_rat_fit)
+```

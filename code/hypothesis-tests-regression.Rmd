@@ -193,7 +193,7 @@ Answers:
 
 Now adjust the simulations above and write what you find:
 
-1. It seems like the fraction of falsely rejected nulls does not increase with hte number of variables included, and the relationship is noisier rather than linear. In general as the number of variables increases, 
+1. It seems like the fraction of falsely rejected nulls does not increase with hte number of variables included, and the relationship is noisier rather than linear.
 2. It seems like it does increase linearly and consistently with number of variables.
 
 ## Non-normal errors
@@ -290,10 +290,10 @@ for (jj in length(N)) {
     fit_n <- lm(Y_ndist ~ ., data=X)
 
     if (length(coef(fit_t)) > 1 && f_p_value(fit_t) <= 0.05) {
-      num_significant[jj] <- num_significant[jj] + 1
+      num_significant_t[jj] <- num_significan_tt[jj] + 1
     }
     if (length(coef(fit_n)) > 1 && f_p_value(fit_n) <= 0.05) {
-      num_significant_t[jj] <- num_significant[jj] + 1
+      num_significant_t[jj] <- num_significant_t[jj] + 1
     }
   }
 }
@@ -313,7 +313,7 @@ lines(N,num_significant / num_trials)
 
 1. Do you observe any differences in the behavior of the hypothesis tests? 
 
-With p = 3 and N as 5 or 500, I plotted the distribution of F test pvalues for each fit (in the model with tdistributed errors, and in the model with normally distributed errors) on the same graph. With N=500, the distributions are similar but they are a bit more different at N=5.
+With p = 3 and N as 5 or 500, I plotted the distribution of F test pvalues for each fit (in the model with tdistributed errors, and in the model with normally distributed errors) on the same graph. The distributions are similar with some differences; they are more bit more different at N=5 than at N=500.
 
 2. What do the effects of non-normality appear to be on the F test?
 

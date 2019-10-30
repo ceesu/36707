@@ -46,49 +46,41 @@ test  <- data[-sample, ]
 
 ## a)
 
-**Suppose we use an additive model where each additive function is a univariate kernel
-smoother.Do you expect this model would have more or less bias and variance than the full kernel
-smoother? Be specific about both the bias and variance.**
+**Suppose we use an additive model where each additive function is a univariate kernel smoother. Do you expect this model would have more or less bias and variance than the full kernel smoother? Be specific about both the bias and variance.**
 
-For efficicency I used only 1000 rows of the data. Coefficients are given in Table 1. We see that the mean squared error is 2503.734.
-
-```{r, warning=FALSE, results='asis'}
-set.seed(1234)
-rows=sample(nrow(train), 1000)
-
-```
+The additive model should have higher bias than the full kernel smoother since each of the functions is a kernel with its own parameters. However there will be lower variance since the additive model is less flexible than the full kernel smoother.
 
 ## b) 
+**Split the data into training and test sets, as you did in Homework 6. You should not need to subsample the data, as additive models are quite fast. Use predict and compare the squared-error loss of the additive model to that of the linear model. Does the additive model do dramatically better?**
 
-**Split the data into training and test sets, as you did in Homework 6. You should not need
-to subsample the data, as additive models are quite fast.
-Run the same baseline linear regression you used in Homework 6, so we have a basis to
-compare against.
-Using the gam function in the mgcv package, fit an additive model to the training data using
-the default smoother for each term. (This means using a formula like y ~ s(x1) + s(x2) + ....
-The s() model term smooths the variable using thin plate regression splines by default.
-Note that it only makes sense to smooth over continuous variables; you can use ordinary
-terms for categorical variables.)
-(You should smooth over day of week and day of month. But note that you may need to
-set the k argument to s() for day of week; by default, mgcv tries to use a spline basis with
-more basis functions than there are unique days, which doesn’t work.)
-Use predict and compare the squared-error loss of the additive model to that of the linear
-model. Does the additive model do dramatically better?**
-
-Coefficients are given in Table 2. We see that the mean squared error is 3309.925. This method does not seem to do better based on mse.
+Yes, in fact the mse of the additive model is 2255.892 which is about half as much as the linear model.
 
 ```{r, warning=FALSE, results='asis'}
-bw =npregbw(ARR_DELAY~ DEP_TIME +as.factor(ORIGIN) +
-              DAY_OF_MONTH +as.factor(CARRIER) + 
-              as.factor(DAY_OF_WEEK),
-            data=train[rows,])
-
-loclinfit <- npreg(bw)
+# Run the same baseline linear regression you used in Homework 6, so we have a basis to
+# compare against. 
+base=npregbw(ARR_DELAY~DEP_TIME +as.factor(ORIGIN) +
+              DAY_OF_MONTH +as.factor(CARRIER) +
+              DAY_OF_WEEK, 
+            data=train,
+            regtype = "ll")
+loclinfit <- npreg(bw2)
 summary(loclinfit)
 
-# mean squared-error loss
-mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2, 
-     na.rm = TRUE)
+#Using the gam function in the mgcv package, fit an additive model to the training data using the default smoother for each term. (This means using a formula like y ~ s(x1) + s(x2) + .... The s() model term smooths the variable using thin plate regression splines by default. Note that it only makes sense to smooth over continuous variables; you can use ordinary terms for categorical variables.)
+additive <- mgcv::gam(ARR_DELAY~s(DEP_TIME) +as.factor(ORIGIN) +
+              s(DAY_OF_MONTH) +as.factor(CARRIER) +
+              s(DAY_OF_WEEK, k=7),
+                      #family=Gamma(link=), 
+                      data =train)
+
+
+# (You should smooth over day of week and day of month. But note that you may need to
+# set the k argument to s() for day of week; by default, mgcv tries to use a spline basis with more basis functions than there are unique days, which doesn’t work.)
+
+# Use predict and compare the squared-error loss of the additive model to that of the linear model
+mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2, na.rm = TRUE)
+
+mean((test$ARR_DELAY - predict.gam(additive, newdata = test))^2, na.rm = TRUE)
 ```
 
 ## c) 
@@ -98,40 +90,14 @@ cluding standard errors. Make the plots and interpret the results. What do the p
 gest about the appropriateness of linear regression? Do the plots explain the difference in performance between lienar regression and the additive model? Be sure to interpret
 the standard error ranges and say what their widths imply.**
 
-The plots below suggest that:
-
-1. delay length (ARR_DELAY) is correlated with the variable ORIGIN. Seems like delay is longer from ORD.
-2. delay length seems to decrease non linearly with DEP_TIME.
-
-However the nonlinearities are slight and apparently don't seem to impair the performance of the ordinary linear regression for the subset of data we are using.
-
-```{r, warning=FALSE, fig.height=8}
-par(mfrow=c(3,2))
-npplot(bw, 
-       data =data, plot.errors.method= "bootstrap")
-```
-
-## d) 
-
-**Repeat this analysis, but use a locally linear kernel regression (with regtype = "ll" provided to npregbw). Compare the test error from this model to that for the previous one. Discuss possible reasons for any difference you see.**
-
-Here it seems that the mean squared error is 3749.95 which is larger than the previous model. This suggests that the locally linear version doesn't perform as well as the local-constant kernel, maybe due to overfitting to the training data. We have also seen the linear model does not seem to perform worse using the training data that we do have.
+If linear regression is appropriate, the additive model should have lower variance than we 
 
 ```{r, warning=FALSE, results='asis', fig.height=8}
-bw2=npregbw(ARR_DELAY~DEP_TIME +as.factor(ORIGIN) +
-              DAY_OF_MONTH +as.factor(CARRIER) +
-              as.factor(DAY_OF_WEEK), 
-            data=train[rows,],
-            regtype = "ll")
+# base plot
+par(mfrow=c(3,2))
+npplot(base, data =data, plot.errors.method = "bootstrap")
 
-loclinfit <- npreg(bw2)
-summary(loclinfit)
-
-# squared-error loss
-mean((test$ARR_DELAY - predict(loclinfit, newdata = test))^2, na.rm = TRUE)
-
-dev.new(width=5, height=8, unit = "in")
-par(mfrow=c(5,1))
-npplot(bw2,data = data,
-       plot.errors.method= "bootstrap")
+# additive plot
+par(mfrow=c(3,2))
+plot.gam(additive)
 ```
