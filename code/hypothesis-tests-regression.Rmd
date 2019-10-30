@@ -244,7 +244,8 @@ for (jj in N) {
   pvals_tdist <- numeric(length(num_trials))
   pvals_ndist <- numeric(length(num_trials))
   for (ii in 1:num_trials) {
-    Y_tdist <- generate_error_t(X, sigma)/sqrt(jj)
+    # https://stats.stackexchange.com/questions/117626/how-can-i-work-out-the-standard-deviation-of-a-t-distribution
+    Y_tdist <- generate_error_t(X, sigma)*sqrt(jj)
     #Y_tdist <- Y_tdist/max(Y_tdist) #scale t distribution so it has the same standard deviation
     Y_ndist <- generate_error(X, sigma)
     fit_t <- lm(Y_tdist ~ ., data=X)
