@@ -237,7 +237,7 @@ p <- 3
 N <- c(5, 300) # try a large N and small N
 
 # How many times should we try?
-num_trials <- 50
+num_trials <- 500
 
 for (jj in N) {
   X <- generate_X(jj, p)
@@ -254,8 +254,8 @@ for (jj in N) {
     pvals_ndist[ii] <- f_p_value(fit_n)
   }
   # now make a plot of the pvals.
-  d <- density(pvals_tdist)
-  d2 <- density(pvals_ndist)
+  hist(pvals_tdist)
+  hist(pvals_ndist)
   
   plot(d, col = "red", main = paste0("pval distribution for N=", jj))
   lines(d2)
@@ -302,9 +302,9 @@ for (jj in length(N)) {
      #xlab="N", ylab="Density")
 
 # What do the effects of non-normality appear to be on the F test?
-plot(N, num_significant_t / num_trials,
+plot( num_significant_t / num_trials,
      xlab="Number of variables", ylab="Fraction of nulls falsely rejected")
-lines(N,num_significant / num_trials)
+lines(num_significant / num_trials)
  legend = c("bottomleft", legend= c("tdist", "ndist"))
 
 ```
@@ -317,4 +317,4 @@ With p = 3 and N as 5 or 500, I plotted the distribution of F test pvalues for e
 
 2. What do the effects of non-normality appear to be on the F test?
 
-Looking at the same plot, it appears the pvalues from fitting teh t-distributed errors are 
+Looking at the same plot, it appears the pvalues from fitting the t-distributed errors are very similar, and then  

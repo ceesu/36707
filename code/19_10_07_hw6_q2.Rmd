@@ -62,7 +62,7 @@ rows=sample(nrow(train), 1000)
 # fit on the training data
 best.fit=lm(ARR_DELAY~ DEP_TIME +as.factor(ORIGIN) +
               DAY_OF_MONTH +as.factor(CARRIER) + 
-              as.factor(DAY_OF_WEEK), data=train[rows,])
+              DAY_OF_WEEK, data=train[rows,])
 #coef(best.fit, 8)
 stargazer(best.fit, 
           title = "Q2a",
@@ -85,9 +85,9 @@ matically better?**
 Coefficients are given in Table 2. We see that the mean squared error is 3309.925. This method does not seem to do better based on mse.
 
 ```{r, warning=FALSE, results='asis'}
-bw =npregbw(ARR_DELAY~ DEP_TIME +as.factor(ORIGIN) +
-              DAY_OF_MONTH +as.factor(CARRIER) + 
-              as.factor(DAY_OF_WEEK),
+bw =npregbw(ARR_DELAY~ DEP_TIME +ORIGIN+
+              DAY_OF_MONTH +CARRIER + 
+              DAY_OF_WEEK,
             data=train[rows,])
 
 loclinfit <- npreg(bw)
@@ -141,4 +141,5 @@ dev.new(width=5, height=8, unit = "in")
 par(mfrow=c(5,1))
 npplot(bw2,data = data,
        plot.errors.method= "bootstrap")
+plot(bw2)
 ```

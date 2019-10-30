@@ -1,0 +1,306 @@
+---
+title: "Build-a-Booster Workshop"
+author: "Alex Reinhart"
+date: "10/28/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Let's examine boosting. Boosting uses a series of "weak" classifiers -- meaning simple ones with not-very-good accuracy -- to build a better classifier.
+
+Let's suppose we have two variables, $X_1$ and $X_2$, and one outcome variable $Y$ that is either 0 or 1.
+
+Our weak classifiers can be anything. Let's use a *stump*: a classification tree with only one split. We'll pick that split using the misclassification error, weighted by weights for each observation:
+
+```{r}
+misclass_error <- function(observed, predicted, weights) {
+  sum(weights * ifelse(observed == predicted, 0, 1))
+}
+```
+
+If we have $X$, $Y$, and some weights, and we want to pick the best split, how do we do it? Suppose $X$ is provided as a matrix with $N$ rows and 2 columns, and $Y$ is a vector with $N$ entries. This function picks the split that minimizes misclassification error, but you can ignore the details:
+
+```{r}
+## Ignore the details of this code! It just finds the split with the best misclassification error.
+best_split <- function(X, Y, weights) {
+  best_col <- 1
+  best_split <- NA
+  best_error <- Inf
+  best_left_predict <- 0
+  best_right_predict <- 0
+  
+  for (col in 1:ncol(X)) {
+    for (val in unique(X[, col])) {
+      left_idxs <- X[, col] < val
+      
+      if (sum(left_idxs) == 0 || sum(left_idxs) == nrow(X)) {
+        ## This would put 0 data points on one side and all on the other;
+        ## skip this option.
+        next
+      }
+      
+      left_ys <- Y[left_idxs]
+      left_weights <- weights[left_idxs]
+      right_ys <- Y[!left_idxs]
+      right_weights <- weights[!left_idxs]
+      
+      left_predict <- if (sum(left_ys * left_weights) > 0.5 * sum(left_weights)) { 1 } else { 0 }
+      right_predict <- if (sum(right_ys * right_weights) > 0.5 * sum(right_weights)) { 1 } else { 0 }
+      
+      this_error <- (misclass_error(left_ys, left_predict, left_weights) +
+                       misclass_error(right_ys, right_predict, right_weights))
+      
+      if (this_error < best_error) {
+        best_error <- this_error
+        best_col <- col
+        best_split <- val
+        best_left_predict <- left_predict
+        best_right_predict <- right_predict
+      }
+    }
+  }
+  
+  return(list(split=best_split, col=best_col, left_predict=best_left_predict,
+              right_predict=best_right_predict, error=best_error))
+}
+```
+
+Now, building a predictor using this is easy! This function finds the best split, and returns a *new* function that takes in $X$ values and returns the predicted $Y$ values:
+
+```{r}
+stump_predictor <- function(X, Y, weights=rep(1, length(Y))) {
+  best <- best_split(X, Y, weights)
+  
+  return(function(new_X) {
+    predictions <- numeric(nrow(new_X))
+    
+    for (row in 1:nrow(new_X)) {
+      predictions[row] <- if (new_X[row, best$col] < best$split) { 
+        best$left_predict
+      } else {
+        best$right_predict
+      }
+    }
+    return(predictions)
+  })
+}
+```
+
+## Make some data
+
+```{r}
+make_data <- function(N=150) {
+  X <- matrix(runif(2 * N, min=0, max=10), nrow=N, ncol=2)
+  Y <- ifelse((X[, 1] < 5 & X[, 2] < 5) | (X[, 1] > 5 & X[, 2] > 5), rbinom(N, 1, 0.1), rbinom(N, 1, 0.9))
+  
+  stopifnot(nrow(X) == length(Y)) # sanity check!
+  return(list(X=X, Y=Y))
+}
+
+d <- make_data()
+X <- d$X
+Y <- d$Y
+
+```
+
+Let's see what that looks like:
+
+```{r}
+plot(X[, 1], X[, 2], col=1+Y, pch=19)
+```
+
+QUESTIONS:
+
+1. Could you classify these points accurately using only one stump?
+2. If you were using a decision tree, to what depth should you build it to classify these points fairly accurately?
+
+ANSWERS:
+
+1. No, since the stump has only one split, and these data are not well split between teh two classes.
+
+2.  We may be satisfied to use just two stumps because we get a majority of the poitns separated, but there will definitely be some outliers.
+
+## Boost it!
+
+This function does boosting. It takes $X$ and $Y$, and a number of iterations (how many steps to boost?), and produces stump predictors on each step, updating the weights each time according to the boosting rules.
+
+```{r}
+boosted_classifiers <- function(X, Y, iterations=100) {
+  N <- nrow(X)
+  weights <- rep(1/N, N)
+  
+  classifiers <- list()
+  alphas <- numeric(0)
+
+  for (it in 1:iterations) {
+    classifier <- stump_predictor(X, Y, weights)
+
+    correct <- classifier(X) == Y
+    err <- sum(weights * ifelse(correct, 0, 1)) # this is positive or zero
+    
+    if (err >= 0.5) {
+      ## Failed in producing better-than-chance weighted error.
+      ## Stop the boosting.
+      break
+    }
+    
+    alphas <- c(alphas, log((1 - err) / err)/ 2) # if 1 - err is greater than err, log is positive
+    
+    weights <- weights * exp(alphas[it] * ifelse(correct, -1, 1))
+    weights <- weights / sum(weights)
+    
+    classifiers <- c(classifiers, classifier)
+  }
+  
+  return(list(classifiers=classifiers, alpha=alphas))
+}
+```
+
+QUESTIONS:
+
+1. Examine the weighting method. If a point is correctly classified on step 5, what will happen to its weight on step 6? What about a weight incorrectly classified on step 5?
+2. Why should we stop when the error is greater than 0.5? What's wrong with including such a classifier?
+
+ANSWERS:
+
+1. Since we change the weight such that if it's correct, it is multiplied by some factor less than one, we are downweighting the correctly classified points and upweighting the incorrectly classified point. 
+2. This is worse than chance. 
+
+
+Next, we write a function that takes the output of `boosted_classifiers` and uses those classifiers to make predictions. It takes an optional argument $M$: if we did 20 boosting steps, but set $M = 10$, it will only use the first ten predictors.
+
+```{r}
+boosted_predictions <- function(boosted, new_X, M=length(boosted$classifiers)) {
+  N <- nrow(new_X)
+  
+  predictions <- matrix(NA, nrow=N, ncol=M)
+  
+  classifiers <- boosted$classifiers
+  alpha <- boosted$alpha[1:M]
+  
+  for (classifier in 1:M) {
+    ## We center the outputs to be between -0.5 and 0.5. That way we can scale
+    ## everything by alpha and then just see if the sum is greater or less than 0.
+    predictions[, classifier] <- classifiers[[classifier]](new_X) - 0.5
+  }
+  
+  rows <- numeric(N)
+  for (row in 1:N) {
+    rows[row] <- if(sum(predictions[row, ] * alpha) >= 0) { 1 } else { 0 }
+  }
+  
+  return(rows)
+}
+```
+
+## Try it!
+
+Let's make a classifier with 20 boosting steps and get the predictions.
+
+```{r}
+boosted <- boosted_classifiers(X, Y, iterations=200)
+
+predictions <- boosted_predictions(boosted, X)
+```
+
+Now, calculate the error rate, and compare it to the fraction of observations that are 0 or 1 as a baseline:
+
+```{r}
+## TODO You fill this in!
+length(Y[Y==0])
+length(Y[Y==1])/length(Y) #0.51 
+error <- 1-length(Y[Y==predictions])/length(Y)
+error
+```
+
+QUESTION: Comment on the results. How much better do you do?
+
+ANSWER: You have ~50% chance of predicting 1, which is the baseline. But here, the error rate is about 11%, which means I do about 40% better. 
+
+## Visualizing the boost
+
+Let's see how the boosted model makes its predictions using individual stumps.
+
+This function plots the predictions and correctness at multiple steps of the boosting process.
+
+```{r}
+suppressMessages(library(ggplot2))
+library(gridExtra)
+
+plot_predictions <- function(X, Y, boosted, steps=seq(1, length(boosted$alpha))) {
+  
+  results <- data.frame(X1=numeric(0), X2=numeric(0), Y=numeric(0), predicted=numeric(0), correct=logical(0), step=numeric(0))
+  for (step in steps) {
+    predictor <- boosted$classifiers[[step]]
+    predictions <- predictor(X)
+    
+    results <- rbind(results,
+                     data.frame(X1=X[, 1], X2=X[, 2], Y=Y, predicted=predictions, 
+                        correct=(predictions == Y), step=step))
+  }
+  
+  ggplot(results, aes(x=X1, y=X2, color=correct, shape=factor(predicted))) +
+    geom_point() + theme_bw() + facet_wrap(vars(step)) +
+    labs(color="Correct?", shape="Prediction")
+}
+```
+
+Examine the predictions in the first few steps:
+
+```{r}
+plot_predictions(X, Y, boosted, 1:6)
+```
+
+## Explore the accuracy as we boost more
+
+This function takes the output of `boosted_classifiers`, plus a dataset $X$ and $Y$, and repeatedly evaluates the accuracy for the boosted model with 1 classifier, then 2, then 3, and so on:
+
+```{r}
+plot_accuracy <- function(boosted, X, Y) {
+  num_classifiers <- length(boosted$alpha)
+  
+  accuracies <- numeric(num_classifiers)
+  
+  for (i in 1:num_classifiers) {
+    accuracies[i] <- mean(boosted_predictions(boosted, X, i) ==
+                            Y)
+  }
+  
+  plot(1:num_classifiers, accuracies,
+       xlab="Number of boosted classifiers", ylab="Accuracy", pch=19)
+}
+```
+
+```{r}
+plot_accuracy(boosted, X, Y)
+```
+
+QUESTIONS:
+
+1. Above, you answered a question about the depth of a tree that'd be needed to classify this data well. How many steps did boosting take to get good accuracy? Why are the numbers so different?
+2. What advantages do you see boosting as having, versus just building and pruning a decision tree?
+
+ANSWERS:
+
+1. We require about 50 classifiers, but we predicted we need 2. The numbers are different since we wanted to get to 80% accuracy and there were many points which lay outside of the quadrant that we would get with just two stumps.
+2. If the boundary is some function, it might be more difficult.
+
+## What about on a training set?
+
+Use the `make_data()` function from above to make a *new* dataset of $X$ and $Y$. Then use `plot_accuracy` to show the accuracy of the boosted models to this test set:
+
+```{r}
+## TODO You fill in!
+new <- make_data(300)
+
+new_boosted <- boosted_classifiers(new$X, new$Y, iterations=200)
+plot_accuracy(boosted, new$X, new$Y)
+```
+
+QUESTION: How does it compare to the plot before? What might explain the differences?
+
+ANSWER: The plot shows that the accuracy of the boosted classifiers is much lower and doesn't seem to converge. This suggests that the model doesn't generalize well, since we have overfit to the training data and are unable to capture interactions. However when we have >100 classifiers there is greater performance than by chance.
+
