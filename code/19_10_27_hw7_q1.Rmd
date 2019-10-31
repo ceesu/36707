@@ -178,12 +178,14 @@ The univariate distributions of the group level variables is given across the di
 
 In the same figure we have the pairwise comparisons of the important variables as well. In the upper diagonal, the Pearson correlation coefficients (upper right half) between important variables are described with their significance. 
 
-Based upon the summary statistics and the distributions seen in Figure \ref{fig:pairs}, we removed the following outlier teams:
+Based upon the summary statistics and the distributions seen in Figure \ref{fig:pairs}, we noted the following outlier teams:
 
 * we likely do not need to discard variables based on collinearity.
 * teams 65, 92 and 101 had very low final performance (below a score of -2).
 * team 64 had very low log testosterone.
 * team 39 was the only one with no female members.
+
+However, we did not remove these outliers at the outset because we actually don't have many teams to fit the model on and the outliers lay within wo standard deviations of the mean of each variable in question.
 
 ```{r dists, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs}Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of astericks."}
 # check relationships of all variables of interest
@@ -195,8 +197,8 @@ library("PerformanceAnalytics")
 chart.Correlation(team_dat[allvars], histogram=TRUE, pch=19)
 
 # removal of variables
-probs <- c(64, 65, 92, 101, 39)
-team_dat <- team_dat[!(team_dat$team.id %in% probs),]
+#probs <- c(64, 65, 92, 101, 39)
+#team_dat <- team_dat[!(team_dat$team.id %in% probs),]
 ```
 
 ## Results
@@ -291,16 +293,14 @@ stargazer(full_mod1,
           title = "Terms included in model of testosterone and performance")
 ```
 
-We verified that this model could provide a good fit to the data by looking at the diagnostic plots. We found that 
+We verified that this model could provide a good fit to the data by looking at the diagnostic plots. We found that there were two outliers with low residuals (marked 66 and 59) in the plot of residuals vs. fitted and the normal QQ-plot, but these were not highly influential points as measured by Cook's distance which is shown in the Residuals vs. Leverage plot.
 
 ```{r}
-par(2,2)
+par(mfrow = c(2, 2)) 
 plot(full_mod1)
 ```
 
-
-
-The interaction term diversity.score:avg.log.testosterone is indeed significant (coefficient = -2.2574, p < 0.001; see Table 1). The negative sign of the coefficient implies that there is an opposite effect on performance from each of the two predictors diversity and testosterone. This is better illustrated in Figure \ref{fig:int} where we can see that when diversity is low at 3 units, group testosterone positively correlates with performance whereas when diversity is high at 6 units testosterone negatively correlates with performance. This suggests that we have verified the findings of the authors.
+In this model, the interaction term diversity.score:avg.log.testosterone is indeed significant (coefficient = -2.2574, p < 0.001; see Table 1). The negative sign of the coefficient implies that there is an opposite effect on performance from each of the two predictors diversity and testosterone. This is better illustrated in Figure \ref{fig:int} where we can see that when diversity is low at 3 units, group testosterone positively correlates with performance whereas when diversity is high at 6 units testosterone negatively correlates with performance. This suggests that we have verified the findings of the authors.
 
 ```{r, echo=FALSE,fig.cap="\\label{fig:int}Interaction between diversity and performance. The plot suggests that as the authors found, group diversity mediates teh effect of testosterone on performance."}
 
@@ -309,7 +309,7 @@ plot_model(full_mod1, type = "int")
 
 ### Effect of cortisol on relationship between diversity and performance
 
-Our EDA and variable selection had shown us that cortisol might be useful to include in our explanatory model of performance and so we additionally tested a model which includes cortisol levels and their interaction with diversity (Table X model X). However we found that in this model, neither cortisol nor its interaction with diversity are found to have a significant effect. 
+Our EDA and variable selection had shown us that cortisol might be useful to include in our explanatory model of performance and so we additionally tested a model which includes cortisol levels and their interaction with diversity (Table X model X). However we found that in this model, neither cortisol nor its interaction with diversity are found to have a significant effect at p < 0.05. 
 
 ```{r, results='asis'}
 form_sans_cortisol <- as.formula(paste("final.performance ~ ", paste(c(vars[1:6],"avg.log.testosterone:diversity.score"), collapse= "+")))
@@ -339,22 +339,14 @@ stargazer(model1,
           title = "Terms included in model of cortisol, testosterone and performance")
 ```
 
+Again we verified that this model could provide a good fit to the data by looking at the diagnostic plots. The same two outliers with low residuals found in the model of testosterone and performance were present here (marked 66 and 59) but these were these were not highly influential points as measured by Cook's distance which is shown in the Residuals vs. Leverage plot. We also note that the value of teh adjusted R squared in this model is significantly higher than in the model without cortisol terms.
 
-```{r, echo=FALSE}
-comparison_1 <- anova(full_mod1,model2, model1)
-kable(comparison_1, digits = 3, format = "pandoc", caption = "Comparison of models with and without cortisol related terms by F test")
-# fstat <- unname(summary(model)$fstatistic[1])
-# df_model <- unname(summary(model)$fstatistic[2])
-# df_res <- unname(summary(model)$fstatistic[3])
-# rsq <- summary(model)$r.squared
-# p <- pf(fstat, df_model, df_res, lower.tail = FALSE)
+```{r}
+par(mfrow = c(2, 2)) 
+plot(model1)
 ```
 
-Curiously however, when we omit the interaction term between diversity score and testosterone leading to (model 4, Table 3) we see that the terms for average log cortisol and its interaction with diversity score are now significant (p < 0.001) but the testosterone term is not. Additionally model 4 (df=64) is significantly better at predicting performance than model 2 as assessed by F-test (Table 4).
-
-In model 4, the average log cortisol variable has a positive coefficient suggesting that stressed groups have better performance. There is a negative coefficient on the diversity.score:avg.log.cortisol term suggesting that like with testosterone, stress changes the effect of diversity on performance and specifically a unit increase in average log cortisol has an antagonizing effect to a unit increase in diversity. 
-
-The last thing we would note is that although their residual standard error is similar (0.743 vs 0.785), model 4 has a lower adjsted r squared statistic indicating the linear model is not as good of a fit. Additionally the contrast between which coefficients have been found significant in model 3 and model 4 suggests that there may be some collinearity between the cortisol terms and the interaction term between diversity score and testosterone which we have not accounted for.
+In this model, the average log cortisol variable has a positive coefficient suggesting that stressed groups have better performance. There is a negative coefficient on the diversity.score:avg.log.cortisol term suggesting that like with testosterone, stress changes the effect of diversity on performance and specifically a unit increase in average log cortisol has an antagonizing effect to a unit increase in diversity. However the terms are not found to be significant so we will need to do further study to determine whether cortisol has an effect on group performance or not.
 
 ### Conclusion
 
