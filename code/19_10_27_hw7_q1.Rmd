@@ -53,9 +53,7 @@ library(grid)
 library(gridExtra)
 library("ggpubr")
 library(knitr)
-library(pander)
-library(sjPlot)
-library(sjmisc)
+library("sjPlot")
 # data
 ind_dat <- read.csv("../data/Individual_Faultlines.csv",
                      sep = ",", 
@@ -106,11 +104,7 @@ Diversity and conflict are considered important factors which influence how well
 
 In their work, [@Akinola2018] collected both demographic data and hormone measurements from 370 MBA students organized into 74 groups who partcipated in a competitive week long project where their goal was to outperform other groups. There were 370 individuals randomly organized into 74 groups.  Based on their demographic and hormone measurement data, the authors concluded that diversity is beneficial for performance, but only if group-level testosterone is low; and diversity has a negative effect on performance if group-level testosterone is high. However, the authors did not mention analyzing cortisol even though cortisol levels is suggested to have an effect testosterone's role in status-relevant behavior [@MEHTA2015163].
 
-To validate the author's hypothesis and additionally examine the specific role of cortisol, we have obtained the [@Akinola2018] dataset which has been processed by [Nifty Datasets](http://rosmarus.refsmmat.com/datasets/datasets/hormone-diversity/) into separate individual level and group level datasets. Here we test the interactions between the hormone profiles of both cortisol and testosterone by modelling their effect on performance in the context of the demographic variables collected and the group diversity.
-
-### Causal diagram 
-
-Based on the preamble from [@Akinola2018] we may guess that the effects of testosterone and diversity on performance are mediated by their opposite effects on 'cooperation' (not directly measured) in the group. Furthermore cortisol levels largely unevaluated by the study may influence performance through affecting group 'stress' (not directly measured). Putting this together with the measured variables, our hypothesized causal diagram follows Figure \ref{fig:cause}. Here 'interim.other' describes other interim measurements of group performance which were in the dataset and 'final.other' describes the measurements of group performance at the conclusion of the task which contribute to the **final.performance** score. This diagram helps set the context for reasoning about which regression models we should try.
+To validate the author's hypothesis and additionally examine the specific role of cortisol, we are using the [@Akinola2018] dataset which has been processed by [Nifty Datasets](http://rosmarus.refsmmat.com/datasets/datasets/hormone-diversity/) into separate individual level and group level datasets. Based on the preamble, we hypothesized that the effects of testosterone and diversity on performance are mediated by their opposite effects on 'cooperation' (not directly measured) in the group. Furthermore cortisol levels largely unevaluated by the study may influence performance through affecting group 'stress' (not directly measured). Putting this together with the measured variables, we illustrate our hypotheses about the data in Figure \ref{fig:cause}. Here 'interim.other' describes other interim measurements of group performance which were in the dataset and 'final.other' describes the measurements of group performance at the conclusion of the task which contribute to the **final.performance** score. This diagram helps set the context for reasoning about which regression models we should try.
 
 ```{r causal, fig.width=9, fig.height=2.5, echo=FALSE, fig.cap="\\label{fig:cause}Causal diagram illustrates hypothesized relationships of experimental variables involved in relationship between testosterone and final group performance."}
 
@@ -143,22 +137,18 @@ plot(g)
 
 ## Methods
 
-### Handling missing data 
-Before calculating additional team level statistics, we saw there were <10 individuals with partly missing data. Since we are trying to look at team level performance, we did not remove any individuals. For these individuals, not everything was missing so we calculated group average measurements, e.g. average hormone measurements, from other members.  
+### Calculation of group level variables and removal of outliers
 
-From this we obtain a complete group level dataset where only measurements in the 'interim' variables are missing. Given that it's unclear how the multiple interim measurements may relate to the final score and they contain many missing values, we removed these variables.
-
-### Calculation of other group level variables from individual level variables
-
-We are interested in doing our analysis at the group level therefore we needed to aggregate the individual level data. To calculate group level testosterone, cortisol and age we first averaged the corresponding individual-level statistics, ignoring missing cases.
-
+We are interested in doing our analysis at the group level therefore we needed to aggregate the individual level data. We saw there were <10 individuals with partly missing data. Since we are trying to look at team level performance, we did not remove any individuals. For these individuals, not everything was missing so we calculated group average measurements, e.g. average hormone measurements, from other members.
 Additionally, we have calculated group diversity score as the number of unique gender-ethnicity-country combinations present in the group. Lastly we calculate proportion of females in the group as the number of females divided by group size. 
-
-### Fitting regression models
-
-Regression models were fit using the lm() function and compared using the anova() function from base R with default parameters. Best subset regression was performed using regsubsets() function from the R leaps package. 
+We then examined whether there were any groups with outlier measurements for the key variables: diversity score, hormone measurements and team performance. 
 
 ## Exploratory Data Analysis & Data Summary
+
+After aggregating data to the group level, we checked the distributions of all of the variables which is summarized below. Only measurements in the 'interim' variables are missing. Given that it's unclear how the multiple interim measurements may relate to the final score and they contain many missing values, we removed these variables. However, the limitation is that we may be very dependent upon a single measure of performance, which would be the score assigned to the variable "final.performance". 
+```{r}
+summary(team_dat)
+```
 
 ### Distribution of hormone levels across individuals and groups
 
@@ -180,44 +170,89 @@ grid.arrange(p1, p2,
 
 ### Incorporation of age and gender 
 
-Both age and gender were included in the results of the original manuscript. Based upon our causal graph, both can have an influence on final performance through influencing testosterone levels or through influencing diversity. We know we need to study their impact on teamwork, therefore it makes sense to look at the proportion of females in the group and the variance of age in the group. We also know that hormone levels depend upon age, therefore we also calculate average age in the group.
-
-Though this adds to the number of variables we need to consider, we can also discard variables if they turn out to be collinear. 
+Both age and gender were included in the results of the original manuscript. Based upon our causal graph, both can have an influence on final performance through influencing testosterone levels or through influencing diversity. We know we need to study their impact on teamwork, therefore it makes sense to look at the proportion of females in the group and the variance of age in the group which are measures of diversity. We also know that hormone levels depend upon age, therefore we also calculate average age in the group.  
 
 ### Univariate and pairwise distributions of group level variables
 
 The univariate distributions of the group level variables is given across the diagonal in Figure \ref{fig:pairs}. We see that in particular, our diversity score appears bimodal. Although our score is calculated differently, [@Akinola2018] classified diversity score into two bins in their faultline analysis suggesting that our diversity score may behave similarly. 
 
-In the same figure we have the pairwise comparisons of the important variables as well. In the upper diagonal, the Pearson correlation coefficients (upper right half) between important variables are described with their significance.  
+In the same figure we have the pairwise comparisons of the important variables as well. In the upper diagonal, the Pearson correlation coefficients (upper right half) between important variables are described with their significance. 
 
-Looking at this figure, we can make the following observations about the key variables:
+Based upon the summary statistics and the distributions seen in Figure \ref{fig:pairs}, we removed the following outlier teams:
 
 * we likely do not need to discard variables based on collinearity.
-* performance appears correlated with proportion of females and testosterone.
-* In addition to performance, testosterone appears significantly correlated with cortisol, average age, proportion of females, time of day, and team size.
-* diversity score appears significantly correlated with team size.
-
-Based on this we believe that in addition to final.performance, avg.log.testosterone, avg.log.cortisol and diversity.score we should consider whether to incorporate the four additional variables proportion.female, avg.age, age.variance, time.of.day, and team.size in our models.
+* teams 65, 92 and 101 had very low final performance (below a score of -2).
+* team 64 had very low log testosterone.
+* team 39 was the only one with no female members.
 
 ```{r dists, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs}Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of astericks."}
 # check relationships of all variables of interest
-vars <- colnames(team_dat)[c(2:4, 15:20)]
+allvars <- colnames(team_dat)[c(2:4, 15:20)]
+vars <- colnames(team_dat)[c(2:4, 15:18)]
 #cor(team_dat)
 #pairs(team_dat[vars], pch = 19,  lower.panel=NULL)
 library("PerformanceAnalytics")
-chart.Correlation(team_dat[vars], histogram=TRUE, pch=19)
+chart.Correlation(team_dat[allvars], histogram=TRUE, pch=19)
+
+# removal of variables
+probs <- c(64, 65, 92, 101, 39)
+team_dat <- team_dat[!(team_dat$team.id %in% probs),]
 ```
 
 ## Results
 
-The results discussed by the original study [@Akinola2018] include that:
+### Selecting the variables with non-negligible effect
 
-* when group diversity was low, group testosterone significantly positively predicted performance at p < .01
-* when group diversity was relatively high, group testosterone significantly negatively predicted performance p <0.01
+Out of the variables that we had considered in Figure \ref{fig:pairs}, to build models we first performed variable selection to exclude those without large effects. We included the interaction terms between diversity score and each of the hormones, which are interpretable interaction terms that we need to consider to answer the substantive questions. 
+First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation and plotted the mean squared error in Figure \ref{fig:cv}. This analysis shows validation error is lowest around 8 terms.
 
-### Group diversity on relationship between testosterone and performance
+```{r cv, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:cv} Cross validation error for each number of predictors"}
 
-First we build a model based upon the variables relevant to the authors' conclusions as determined by our EDA, without including cortisol. The model coefficients are summarized in Table 1. To determine the significance of the interaction we compare the results with (model 1) and without (model 2) the interaction term between testosterone and diversity score. 
+library(leaps)
+set.seed(12)
+folds=sample(rep(1:10,length=nrow(team_dat)))
+
+predict.regsubsets=function(object,newdata,id,...){
+  form=as.formula(object$call[[2]])
+  mat=model.matrix(form,newdata)
+  coefi=coef(object,id=id)
+  mat[,names(coefi)]%*%coefi
+}
+
+vars <-c(allvars)
+cv.errors=matrix(NA,10,11)
+for(k in 1:10){
+  # best fit on the train data
+  best.fit=regsubsets(final.performance~. + avg.log.testosterone:diversity.score + diversity.score:avg.log.cortisol, data=team_dat[folds!=k, vars],nvmax=40,method="exhaustive")
+  # performance on the test data
+  for(i in 1:10){
+    pred=predict(best.fit,team_dat[folds==k,vars],id=i)
+    cv.errors[k,i]=mean((team_dat$final.performance[folds==k]-pred)^2)
+  }
+}
+
+# Take the mean of over all folds for each model size
+mean_cv_errors = apply(cv.errors, 2, mean)
+
+# Find the model size with the smallest cross-validation error
+min = which.min(mean_cv_errors)
+
+# Plot the cross-validation error for each model size, highlight the min
+plot(mean_cv_errors, type='b', xlab = "Number of predictors",
+     ylab = "Mean cross validation error (percent)")
+points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
+
+```
+
+Based on this we used best subset selection on the full data set in order to obtain the best  8-predictor model. The variables and coefficients selected by the model are given in Table 5.  While the coefficients of the predictive model are not necessarily useful for explaining the final group performance, the predictive model includes only variables with non-negligible effect. This suggests to us that age variance for example is not a useful explanatory variable, and we discarded these extra variables.
+
+```{r, echo=FALSE}
+regfit_best = regsubsets(final.performance~. + avg.log.testosterone:diversity.score +diversity.score:avg.log.cortisol, data = team_dat[,vars], nvmax = 8)
+kable(coef(regfit_best, 8), format = "latex",caption = "Variables selected for 8-variable model found by best subsets regression")
+```
+### Effect of group diversity on relationship between testosterone and performance
+
+The results discussed by the original study [@Akinola2018] suggest that when group diversity was low, group testosterone significantly positively predicted performance at p < .01  when group diversity was relatively high, group testosterone significantly negatively predicted performance p <0.01. However they were not considering cortisol at the time. Given this we fit a model of final performance using all of the variables chosen from Table 5 except those terms which included cortisol. The coefficients which we found are displayed in Table X. 
 
 ```{r test_model, fig.width=8, fig.height=8, warning=FALSE, results='asis',echo=FALSE, fig.cap="Model results with interaction between diversity and performance"}
 # model with normalized score
@@ -229,7 +264,7 @@ First we build a model based upon the variables relevant to the authors' conclus
 #plot(mod, col=c("blue"))
 
 #full_form1 <-as.formula(paste("final.performance ~ ", paste(vars, collapse= "+")))
-form_sans_cortisol <- as.formula(paste("final.performance ~ ", paste(c(vars[1:6], vars[8:9],"avg.log.testosterone:diversity.score"),collapse= "+")))
+form_sans_cortisol <- as.formula(paste("final.performance ~ ", paste(c(vars[1:6],"avg.log.testosterone:diversity.score"), collapse= "+")))
 base <- as.formula(paste("final.performance ~ ", paste(c(vars[1:6], vars[8:9]),collapse= "+")))
 full_mod1 <- lm(form_sans_cortisol, data = team_dat)
 full_mod2<- lm( base, data = team_dat)
@@ -238,8 +273,7 @@ full_form2 <-as.formula(paste("final.performance ~ ", paste(vars, collapse= "+")
 full_form3 <-as.formula(paste("final.performance ~ ", paste(vars, collapse= "+"), "+avg.log.testosterone:diversity.score", sep = ""))
 full_form4 <-as.formula(paste("final.performance ~ ", paste(vars, collapse= "+"), "+avg.log.cortisol:diversity.score", sep = ""))
 
-stargazer(full_mod2,
-          full_mod1,
+stargazer(full_mod1,
          # model,
         # object.names = TRUE,
          column.labels = c("model 1", "model 2"),
@@ -254,34 +288,41 @@ stargazer(full_mod2,
           single.row = TRUE,
           omit.table.layout = "n",
           #model.names = FALSE, # remove model names
-          title = "Terms included in models of testosterone and performance")
+          title = "Terms included in model of testosterone and performance")
 ```
 
-In model 1 none of the coefficients are statistically significant whereas in model 2, many are significant at the p < 0.001 level (Table 1). Furthermore model 2 has a much better adjusted R squared value of 0.213 versus 0.023 for model 1 and a lower residual standard error (Table 1). We also compare model 1 and 2 with the F test using anova (Table 2) and find that in line with this, the addition of the interaction term significantly improves the model (p < 0.001). 
+We verified that this model could provide a good fit to the data by looking at the diagnostic plots. We found that 
 
-The interaction term is indeed significant as determined by linear regression in model 2 (coefficient = -2.27, p < 0.001; see Table 1). The negative sign of the coefficient implies that there is an opposite effect on performance from each of the two predictors diversity and testosterone. This is better illustrated in Figure \ref{fig:int} where we can see that when diversity is low at 3 units group testosterone positively correlates with performance whereas when diversity is high at 6 units testosterone negatively correlates with performance. This suggests that we have verified the findings of the authors.
-
-```{r, fig.cap="Table 2", echo=FALSE}
-res <- anova(full_mod2,
-          full_mod1)
-kable(res, caption = "Comparison of models with and without interaction term between testosterone and diversity with F test", digits = 3, format = "pandoc")
+```{r}
+par(2,2)
+plot(full_mod1)
 ```
 
-```{r, echo=FALSE,fig.cap="\\label{fig:int}Interaction between diversity and performance in Model 2"}
+
+
+The interaction term diversity.score:avg.log.testosterone is indeed significant (coefficient = -2.2574, p < 0.001; see Table 1). The negative sign of the coefficient implies that there is an opposite effect on performance from each of the two predictors diversity and testosterone. This is better illustrated in Figure \ref{fig:int} where we can see that when diversity is low at 3 units, group testosterone positively correlates with performance whereas when diversity is high at 6 units testosterone negatively correlates with performance. This suggests that we have verified the findings of the authors.
+
+```{r, echo=FALSE,fig.cap="\\label{fig:int}Interaction between diversity and performance. The plot suggests that as the authors found, group diversity mediates teh effect of testosterone on performance."}
 
 plot_model(full_mod1, type = "int") 
 ```
 
 ### Effect of cortisol on relationship between diversity and performance
 
-Our EDA however had also shown us that cortisol could be useful to include in our model of performance and so we additionally tested a model which includes cortisol levels and their interaction with diversity (Table 3 model 1).  
+Our EDA and variable selection had shown us that cortisol might be useful to include in our explanatory model of performance and so we additionally tested a model which includes cortisol levels and their interaction with diversity (Table X model X). However we found that in this model, neither cortisol nor its interaction with diversity are found to have a significant effect. 
 
 ```{r, results='asis'}
-full_form4 <-as.formula(paste("final.performance ~ ", paste(vars, collapse= "+"), "+avg.log.cortisol:diversity.score", sep = ""))
+form_sans_cortisol <- as.formula(paste("final.performance ~ ", paste(c(vars[1:6],"avg.log.testosterone:diversity.score"), collapse= "+")))
+
+full_form4 <-as.formula(paste("final.performance ~ ", 
+                              paste( c(vars, 
+                                    "avg.log.cortisol:diversity.score",
+                                    "avg.log.testosterone:diversity.score"),
+                                    collapse= "+"), 
+                              sep = ""))
 model1 <- lm(full_form4, data = team_dat)
 model2 <- lm(full_form2, data = team_dat)
-stargazer(model2,
-          model1,
+stargazer(model1,
           model.names = FALSE,
            model.numbers = FALSE,
           #object.names = TRUE,
@@ -295,10 +336,9 @@ stargazer(model2,
           single.row = TRUE,
           omit.table.layout = "n",
           #model.names = FALSE, # remove model names
-          title = "Terms included in models of cortisol and performance")
+          title = "Terms included in model of cortisol, testosterone and performance")
 ```
 
-However the coefficients on these two terms is not significant in model 3 as determined by linear regression. Model 3 has a similar adjusted r squared value (0.214 vs. 0.213) and residual error (0.743 vs 0.744) to model 2 and all of the same variables are assessed as signficant (p <0.05) by linear regression between the two models. In line with this our anova() result from Table 3 suggests that model 3 (df=63) is not a significant improvement upon model 2 (df=65).
 
 ```{r, echo=FALSE}
 comparison_1 <- anova(full_mod1,model2, model1)
@@ -315,54 +355,6 @@ Curiously however, when we omit the interaction term between diversity score and
 In model 4, the average log cortisol variable has a positive coefficient suggesting that stressed groups have better performance. There is a negative coefficient on the diversity.score:avg.log.cortisol term suggesting that like with testosterone, stress changes the effect of diversity on performance and specifically a unit increase in average log cortisol has an antagonizing effect to a unit increase in diversity. 
 
 The last thing we would note is that although their residual standard error is similar (0.743 vs 0.785), model 4 has a lower adjsted r squared statistic indicating the linear model is not as good of a fit. Additionally the contrast between which coefficients have been found significant in model 3 and model 4 suggests that there may be some collinearity between the cortisol terms and the interaction term between diversity score and testosterone which we have not accounted for.
-
-### Model selection by cross validation
-
-To check whether the two hormones are important to group performance in a different way, we performed model selection using best subset regression and cross validation. First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation and plotted the mean squared error in Figure \ref{fig:cv}.
-
-```{r cv, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:cv} Interaction between diversity and performance in Model 2"}
-
-library(leaps)
-set.seed(12)
-folds=sample(rep(1:10,length=nrow(team_dat)))
-
-predict.regsubsets=function(object,newdata,id,...){
-  form=as.formula(object$call[[2]])
-  mat=model.matrix(form,newdata)
-  coefi=coef(object,id=id)
-  mat[,names(coefi)]%*%coefi
-}
-
-cv.errors=matrix(NA,10,11)
-for(k in 1:10){
-  # best fit on the train data
-  best.fit=regsubsets(final.performance~. + avg.log.testosterone:diversity.score + diversity.score:avg.log.cortisol, data=team_dat[folds!=k, vars],nvmax=40,method="exhaustive")
-  # performance on the test data
-  for(i in 1:10){
-    pred=predict(best.fit,team_dat[folds==k,vars],id=i)
-    cv.errors[k,i]=mean((team_dat$final.performance[folds==k]-pred)^2)
-  }
-}
-
-
-# Take the mean of over all folds for each model size
-mean_cv_errors = apply(cv.errors, 2, mean)
-
-# Find the model size with the smallest cross-validation error
-min = which.min(mean_cv_errors)
-
-# Plot the cross-validation error for each model size, highlight the min
-plot(mean_cv_errors, type='b')
-points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
-
-```
-
-It seems validation error is lowest around 8 terms. Based on this we used best subset selection on the full data set in order to obtain the 8-predictor model. The coefficients selected by the model are given in Table 4. Among them, terms for both hormones as well as their interaction term with diversity are included. However, age is excluded. Like before the coeffients on the hormone levels are positive This suggests that both cortisol and testosterone levels and their interaction with diversity are predictive of group performance.
-
-```{r, echo=FALSE}
-regfit_best = regsubsets(final.performance~. + avg.log.testosterone:diversity.score +diversity.score:avg.log.cortisol, data = team_dat[,vars], nvmax = 8)
-kable(coef(regfit_best, 8), format = "latex",caption = "Coefficients of 8-variable model found by best subsets regression")
-```
 
 ### Conclusion
 
