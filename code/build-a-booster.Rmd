@@ -119,9 +119,8 @@ QUESTIONS:
 
 ANSWERS:
 
-1. No, since the stump has only one split, and these data are not well split between teh two classes.
-
-2.  We may be satisfied to use just two stumps because we get a majority of the poitns separated, but there will definitely be some outliers.
+1. No, since the stump has only one split, and these data are not well split into just two regions.
+2.  The data were generated with two classification rules, plus some noise. Therefore we may be about satisfied to use just two stumps because we get a majority of the points separated, but there will definitely be some outliers.
 
 ## Boost it!
 
@@ -166,8 +165,8 @@ QUESTIONS:
 
 ANSWERS:
 
-1. Since we change the weight such that if it's correct, it is multiplied by some factor less than one, we are downweighting the correctly classified points and upweighting the incorrectly classified point. 
-2. This is worse than chance. 
+1. We change the weight of the point such that if it's classified correctly, it is multiplied by some factor less than one. Otherwise it is multiplied by some factor greater than one. This means we are downweighting the correctly classified points and upweighting the incorrectly classified point. 
+2. This would mean the error is worse than chance so this type of classifier is not going to be useful to improve the classification.
 
 
 Next, we write a function that takes the output of `boosted_classifiers` and uses those classifiers to make predictions. It takes an optional argument $M$: if we did 20 boosting steps, but set $M = 10$, it will only use the first ten predictors.
@@ -218,7 +217,7 @@ error
 
 QUESTION: Comment on the results. How much better do you do?
 
-ANSWER: You have ~50% chance of predicting 1, which is the baseline. But here, the error rate is about 11%, which means I do about 40% better. 
+ANSWER: You have ~50% chance of predicting 1, which is the baseline. But here, the error rate is about 15%, which means the classifier has achieved just over 2-fold reduction in error rate.
 
 ## Visualizing the boost
 
@@ -285,8 +284,8 @@ QUESTIONS:
 
 ANSWERS:
 
-1. We require about 50 classifiers, but we predicted we need 2. The numbers are different since we wanted to get to 80% accuracy and there were many points which lay outside of the quadrant that we would get with just two stumps.
-2. If the boundary is some function, it might be more difficult.
+1. We require about 50 classifiers, but we predicted we need 2. The numbers may be different because we wanted to get to 80% accuracy and there were many points which lay outside of the quadrant that we would get with just two stumps.
+2. It seems that by increasing the number of classifiers, boosting will converge to the optimal solution. However if we were to prune a tree, depending on which splits we choose in which order, it may not always find this solution. As well, boosting may be quicker and easier to implement.
 
 ## What about on a training set?
 
@@ -302,5 +301,5 @@ plot_accuracy(boosted, new$X, new$Y)
 
 QUESTION: How does it compare to the plot before? What might explain the differences?
 
-ANSWER: The plot shows that the accuracy of the boosted classifiers is much lower and doesn't seem to converge. This suggests that the model doesn't generalize well, since we have overfit to the training data and are unable to capture interactions. However when we have >100 classifiers there is greater performance than by chance.
+ANSWER: The plot shows that the accuracy of the boosted classifiers is much lower and doesn't seem to converge. This suggests that the model doesn't generalize well, since we have overfit to the training data. With boosting, we are unable to easily capture interactions between the dimensions X1 and X2 using an average of stumps. However when we have >100 classifiers there is still a slightly better performance than by random guessing.
 
