@@ -1,0 +1,117 @@
+---
+title: "Testosterone, diversity, and group project performance"
+author: "Cathy Su"
+date: "27/10/2019"
+output:
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+bibliography: hw3.bib
+---
+```{r global_options, include=FALSE}
+# knitr::knit_hooks$set(plot = function(x, options)  {
+#   hook_plot_tex(x, options)
+# })
+library(knitr)
+opts_knit$set(eval.after = 'fig.cap')
+```
+
+```{r setup, include=FALSE}
+#http://rosmarus.refsmmat.com/datasets/datasets/hormone-diversity/ 
+  
+knitr::opts_chunk$set(echo = FALSE,  warning=FALSE,width.cutoff=60)
+# , fig.pos = 'H'
+set.seed(1234)
+
+mod_stargazer <- function(...){
+  output <- capture.output(stargazer(...))
+  # The first three lines are the ones we want to remove...
+  output <- output[4:length(output)]
+  # cat out the results - this is essentially just what stargazer does too
+  cat(paste(output, collapse = "\n"), "\n")
+}
+##### example EDA
+# https://rstudio-pubs-static.s3.amazonaws.com/298962_d4d5811f31394f04b707ce56b43b74c5.html
+# 
+# https://rdrr.io/cran/dlookr/f/vignettes/EDA.Rmd
+# 
+# https://github.com/jrnold/r4ds-exercise-solutions/blob/master/EDA.Rmd
+# 
+# https://github.com/rdpeng/artofdatascience/blob/master/manuscript/EDA.Rmd
+
+# https://github.com/Xiaodan/Coursera-Regression-Models/blob/master/motor_trend_project/report.Rmd
+
+# http://jgscott.github.io/teaching/writeups/files/example_writeup1.pdf
+
+# libraries
+library(stargazer)
+library(tidyverse)
+library(lattice)
+library(dagitty)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library("ggpubr")
+library(knitr)
+library("sjPlot")
+
+#install.packages("ranger")
+library(ranger)
+```
+
+## Q2 Classifying with trees
+
+### (a) 
+
+**Split the data into training and test sets, as I did in gam-spam.Rmd. Using the ranger pack- age, fit a random forest to the training data to classify the email. Show the confusion matrix for its predictions on the test set.**
+
+The confusion matrix shows that the 
+
+```{r}
+
+# data
+spam <- read.csv("../data/gam-spam.csv", header=FALSE)
+training_rows <- sample.int(nrow(spam), round(nrow(spam) / 3))
+
+spam.train <- spam[training_rows, ]
+spam.test <- spam[-training_rows, ]
+
+# apply log transform
+cols <- names(spam.train)[1:(length(spam.train) - 1)]
+for (col in cols) {
+  spam.train[col] <- log(0.1 + spam.train[[col]])
+  spam.test[col] <- log(0.1 + spam.test[[col]])
+}
+# Using the ranger pack- age, 
+# fit a random forest to the training data to classify the email.
+fit <- glm(V58 ~ ., data=spam.train)
+pred <- predict(fit, data = spam.test)
+table(fit$V58, pred$V58)
+```
+#### (b) 
+
+ranger automatically calculates the out-of-bag error for a forest and returns it as the prediction.error field of a forest object. In classification, this is the fraction of misclas- sified samples. How well does the out-of-bag error match the test set error?
+
+### (c) Extract the variable importance and plot them so you can see all the importances in one place. What variables appear most important? Does this make sense?
+
+
+### (d) The ranger function has several tuning parameters. In particular, num.trees controls how many trees to include in the forest, while mtry is the number of variables to consider splitting at each node in the tree. (Recall that rather than considering splitting at every node, random forests pick the best split from a random subset at each node.)
+
+### Build the random forests on the training sets with several different values of each param- eter. (You might make a grid of possible values.) Time how long each forest takes to build (the system.time function may be useful). Compare the accuracy on the test set for all the combinations. What does the effect of each parameter seem to be? What are the tradeoffs between performance and accuracy?
+(I recommend starting with particularly extreme examples, such as mtry=1 or num.trees=5, and don’t raise the parameters much past their defaults, as making either too large will make the forests impractically slow to build.)
+
+
+
+```{r, echo=FALSE}
+regfit_best = regsubsets(final.performance~. + avg.log.testosterone:diversity.score +diversity.score:avg.log.cortisol, data = team_dat[,vars], nvmax = 8)
+kable(coef(regfit_best, 8), format = "latex",caption = "Variables selected for 8-variable model found by best subsets regression")
+```
+## Q3
+
+### (a) ranger has a max.depth parameter. Setting it to 0 means there is no depth restriction, and it builds trees with one observation per node; setting it to a natural number builds trees to that depth (so max.depth=1 corresponds to stumps).
+Build a forest with stumps and show that it does not perform well on the test set, as we’d expect.
+
+### (b) Gradually increase the max.depth, one step at a time, and evaluate the test set perfor- mance. Plot test error against depth. What depth seems to be the minimum depth needed for the forest to work? Does that match what you would have expected from our discus- sion of the activity? Is there harm from having a larger maximum depth than is strictly necessary?
+
+### (c) This question is open-ended. Random forests seem to have several tuning parameters, such as the number of trees, the depth, the number of parameters sampled, and so on. This example shows that some of those parameters do matter.
+In your own words, describe your recommendations for using random forests on real- world data where you don’t know the ideal tuning parameters. Where would you rec- ommend you start? Describe the tradeoffs you make when increasing or decreasing each parameter, and describe how you could know if you have made good choices.
