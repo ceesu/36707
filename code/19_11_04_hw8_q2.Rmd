@@ -1,7 +1,7 @@
 ---
-title: "Testosterone, diversity, and group project performance"
+title: "HW8"
 author: "Cathy Su"
-date: "27/10/2019"
+date: "2/11/2019"
 output:
   pdf_document:
     fig_caption: yes
@@ -49,11 +49,9 @@ library(tidyverse)
 library(lattice)
 library(dagitty)
 library(reshape2)
-library(grid)
-library(gridExtra)
 library("ggpubr")
 library(knitr)
-library("sjPlot")
+
 
 #install.packages("ranger")
 library(ranger)
@@ -65,12 +63,13 @@ library(ranger)
 
 **Split the data into training and test sets, as I did in gam-spam.Rmd. Using the ranger pack- age, fit a random forest to the training data to classify the email. Show the confusion matrix for its predictions on the test set.**
 
-The confusion matrix shows that the 
+The confusion matrix shows that the majority of predictions lie along the diagonal but there is some ~5% of cases are misclassified.
 
 ```{r}
 
 # data
 spam <- read.csv("../data/gam-spam.csv", header=FALSE)
+spam$V58 <- as.factor(spam$V58)
 training_rows <- sample.int(nrow(spam), round(nrow(spam) / 3))
 
 spam.train <- spam[training_rows, ]
@@ -84,34 +83,157 @@ for (col in cols) {
 }
 # Using the ranger pack- age, 
 # fit a random forest to the training data to classify the email.
-fit <- glm(V58 ~ ., data=spam.train)
+fit <-ranger(dependent.variable.name = "V58", data=spam.train, write.forest = TRUE)
+fit <- ranger(V58 ~ ., data = spam.train)
 pred <- predict(fit, data = spam.test)
-table(fit$V58, pred$V58)
+#fit$confusion.matrix
+table(spam.test$V58, pred$predictions)/length(pred$predictions)
 ```
+
 #### (b) 
 
-ranger automatically calculates the out-of-bag error for a forest and returns it as the prediction.error field of a forest object. In classification, this is the fraction of misclas- sified samples. How well does the out-of-bag error match the test set error?
+**ranger automatically calculates the out-of-bag error for a forest and returns it as the prediction.error field of a forest object. In classification, this is the fraction of misclas- sified samples. How well does the out-of-bag error match the test set error?**
 
-### (c) Extract the variable importance and plot them so you can see all the importances in one place. What variables appear most important? Does this make sense?
+Since 0.018+0.044=0.062 from the normalized confusion matrix, and the out of bag error is just under 0.06, the out-of-bag error matches the test set error well.
 
-
-### (d) The ranger function has several tuning parameters. In particular, num.trees controls how many trees to include in the forest, while mtry is the number of variables to consider splitting at each node in the tree. (Recall that rather than considering splitting at every node, random forests pick the best split from a random subset at each node.)
-
-### Build the random forests on the training sets with several different values of each param- eter. (You might make a grid of possible values.) Time how long each forest takes to build (the system.time function may be useful). Compare the accuracy on the test set for all the combinations. What does the effect of each parameter seem to be? What are the tradeoffs between performance and accuracy?
-(I recommend starting with particularly extreme examples, such as mtry=1 or num.trees=5, and don’t raise the parameters much past their defaults, as making either too large will make the forests impractically slow to build.)
-
-
-
-```{r, echo=FALSE}
-regfit_best = regsubsets(final.performance~. + avg.log.testosterone:diversity.score +diversity.score:avg.log.cortisol, data = team_dat[,vars], nvmax = 8)
-kable(coef(regfit_best, 8), format = "latex",caption = "Variables selected for 8-variable model found by best subsets regression")
+```{r}
+fit$prediction.error
 ```
+
+
+### (c) 
+**Extract the variable importance and plot them so you can see all the importances in one place. What variables appear most important? Does this make sense?**
+
+Here we used the impurity measure to assess imortance, which calculates importance "as the sum over the number of splits (accross all tress) that include the feature, proportionaly to the number of samples it splits."
+
+From the gam-spam activity we know that _the first 48 columns are the frequencies (percentages) of words in each email that are specific words, such as "business" or "credit" or "free". The next 6 columns cound the frequencies of specific characters. The next few columns look at capitalization in the email, and the last column indicates if the email was spam (1) or not (0)._ 
+
+It seems from this graph that there are a few specific words among the 48 which are very important, the last few frequencies of specific characters are important ( especially $ and !) and lastly the strings of capitalization within the email is really important.The spikes we see in the graph seem to make sense since certain words, punctuation marks and use of capital letters are all distinctive characteristics of spam emails.
+
+```{r}
+im <- ranger(V58 ~ ., data = spam, importance = "impurity")
+im$variable.importance
+plot(im$variable.importance, main = "Variable importance")
+```
+
+
+### (d) 
+**The ranger function has several tuning parameters. In particular, num.trees controls how many trees to include in the forest, while mtry is the number of variables to consider splitting at each node in the tree. (Recall that rather than considering splitting at every node, random forests pick the best split from a random subset at each node.) Build the random forests on the training sets with several different values of each parameter. (You might make a grid of possible values.) Time how long each forest takes to build (the system.time function may be useful). Compare the accuracy on the test set for all the combinations. What does the effect of each parameter seem to be? What are the tradeoffs between performance and accuracy? (I recommend starting with particularly extreme examples, such as mtry=1 or num.trees=5, and don’t raise the parameters much past their defaults, as making either too large will make the forests impractically slow to build.)**
+
+When increasing mtry, the time XX and hte accuracy XXX.
+When increasing num.trees, the time XX and hte accuracy XXX.
+
+
+```{r}
+# select ranges of interest
+mtrys =floor(seq.int(1, 57, length.out=50))
+numtrees=floor(seq.int(5, 600, length.out=50))
+
+######## plot mtry vs Time how long each forest takes to build
+# also  Compare the accuracy on the test set for all the combinations.
+times <- numeric(length(mtrys))
+err<-  numeric(length(mtrys))
+for (m in 1:length(mtrys)){
+  # Start the clock!
+  ptm <- proc.time()
+  fit <- ranger(V58 ~ ., 
+                 mtry = mtrys[m],
+                 data = spam.train)
+  # Stop the clock
+  t <- proc.time() - ptm
+  times[m] <- t[1]
+  
+  # find the accuracy
+  pred <- predict(fit, data = spam.test, se.fit=TRUE)
+  err[m] <- 1-length(spam.test$V58[spam.test$V58==pred$predictions])/length(spam.test$V58)
+}
+
+par(mfrow=c(2,2))
+plot(mtrys, times, main = "Runtime")
+plot(mtrys, err, main = "Percent error")
+
+####### plot num.trees vs Time how long each forest takes to build
+times <- numeric(length(mtrys))
+err<-  numeric(length(mtrys))
+for (m in 1:length(num.trees)){
+  # Start the clock!
+  ptm <- proc.time()
+  fit <- ranger(V58 ~ ., 
+                 num.trees=numtrees[m],
+                 data = spam.train)
+  # Stop the clock
+  t <- proc.time() - ptm
+  times[m] <- t[1]
+  
+  # find the accuracy
+  pred <- predict(fit, data = spam.test, se.fit=TRUE)
+  err[m] <- 1-length(spam.test$V58[spam.test$V58==pred$predictions])/length(spam.test$V58)
+}
+
+plot(numtrees, times, main = "Runtime")
+plot(numtrees, err, main = "Percent error")
+
+```
+
+
 ## Q3
 
-### (a) ranger has a max.depth parameter. Setting it to 0 means there is no depth restriction, and it builds trees with one observation per node; setting it to a natural number builds trees to that depth (so max.depth=1 corresponds to stumps).
-Build a forest with stumps and show that it does not perform well on the test set, as we’d expect.
+### (a) 
+**ranger has a max.depth parameter. Setting it to 0 means there is no depth restriction, and it builds trees with one observation per node; setting it to a natural number builds trees to that depth (so max.depth=1 corresponds to stumps). Build a forest with stumps and show that it does not perform well on the test set, as we’d expect.**
 
-### (b) Gradually increase the max.depth, one step at a time, and evaluate the test set perfor- mance. Plot test error against depth. What depth seems to be the minimum depth needed for the forest to work? Does that match what you would have expected from our discus- sion of the activity? Is there harm from having a larger maximum depth than is strictly necessary?
+We see from the normalized confusion matrix that the error rate is high at about 50%.
 
-### (c) This question is open-ended. Random forests seem to have several tuning parameters, such as the number of trees, the depth, the number of parameters sampled, and so on. This example shows that some of those parameters do matter.
-In your own words, describe your recommendations for using random forests on real- world data where you don’t know the ideal tuning parameters. Where would you rec- ommend you start? Describe the tradeoffs you make when increasing or decreasing each parameter, and describe how you could know if you have made good choices.
+```{r}
+
+make_data <- function(N=150) {
+  X <- matrix(runif(2 * N, min=0, max=10), nrow=N, ncol=2)
+  Y <- ifelse((X[, 1] < 5 & X[, 2] < 5) | (X[, 1] > 5 & X[, 2] > 5), rbinom(N, 1, 0.1), rbinom(N, 1, 0.9))
+  
+  stopifnot(nrow(X) == length(Y)) # sanity check!
+  new <- cbind(as.data.frame(X), as.data.frame(Y))
+  new$Y <- as.factor(new$Y)
+  #colnames(new)[-1] <- "Y"
+  return(new)
+}
+
+spam <- make_data(N=800)
+training_rows <- sample.int(nrow(spam), round(nrow(spam) / 3))
+
+train <- spam[training_rows, ]
+test <- spam[-training_rows, ]
+
+fit <- ranger(Y ~ ., data = train, max.depth = 1)
+pred <- predict(fit, data = test)
+
+table(test$Y, pred$predictions)/length(pred$predictions)
+```
+
+### (b) 
+**Gradually increase the max.depth, one step at a time, and evaluate the test set perfor- mance. Plot test error against depth. What depth seems to be the minimum depth needed for the forest to work? Does that match what you would have expected from our discus- sion of the activity? Is there harm from having a larger maximum depth than is strictly necessary?**
+
+```{r}
+# Plot test error against depth
+depths =c(1:100)
+
+######## Compare the accuracy on the test set for all the combinations.
+err <-numeric(length(depths))
+for (m in 1:length(depths)){
+  fit <- ranger(Y ~ ., 
+                max.depth=depths[m],
+                data = train, max.depth = 1)
+  
+  # find the accuracy
+  pred <- predict(fit, data = test, se.fit=TRUE)
+  err[m] <- 1-length(test$Y[test$Y==pred$predictions])/length(test$Y)
+}
+
+par(mfrow=c(2,2))
+plot(mtrys, times, main = "Runtime")
+plot(mtrys, err, main = "Percent error")
+```
+
+
+### (c) 
+**This question is open-ended. Random forests seem to have several tuning parameters, such as the number of trees, the depth, the number of parameters sampled, and so on. This example shows that some of those parameters do matter. In your own words, describe your recommendations for using random forests on real- world data where you don’t know the ideal tuning parameters. Where would you rec- ommend you start? Describe the tradeoffs you make when increasing or decreasing each parameter, and describe how you could know if you have made good choices.**
+
+the number of trees, the depth, the number of parameters sampled
