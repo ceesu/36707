@@ -92,7 +92,7 @@ table(spam.test$V58, pred$predictions)/length(pred$predictions)
 
 #### (b) 
 
-**ranger automatically calculates the out-of-bag error for a forest and returns it as the prediction.error field of a forest object. In classification, this is the fraction of misclas- sified samples. How well does the out-of-bag error match the test set error?**
+**ranger automatically calculates the out-of-bag error for a forest and returns it as the prediction.error field of a forest object. In classification, this is the fraction of misclassified samples. How well does the out-of-bag error match the test set error?**
 
 Since 0.018+0.044=0.062 from the normalized confusion matrix, and the out of bag error is just under 0.06, the out-of-bag error matches the test set error well.
 
@@ -120,7 +120,7 @@ plot(im$variable.importance, main = "Variable importance")
 ### (d) 
 **The ranger function has several tuning parameters. In particular, num.trees controls how many trees to include in the forest, while mtry is the number of variables to consider splitting at each node in the tree. (Recall that rather than considering splitting at every node, random forests pick the best split from a random subset at each node.) Build the random forests on the training sets with several different values of each parameter. (You might make a grid of possible values.) Time how long each forest takes to build (the system.time function may be useful). Compare the accuracy on the test set for all the combinations. What does the effect of each parameter seem to be? What are the tradeoffs between performance and accuracy? (I recommend starting with particularly extreme examples, such as mtry=1 or num.trees=5, and don’t raise the parameters much past their defaults, as making either too large will make the forests impractically slow to build.)**
 
-When increasing mtry, the time XX and hte accuracy XXX.
+When increasing mtry, the time increases linearly and the accuracy decreases, then starts to increase past about mtry=10.
 When increasing num.trees, the time XX and hte accuracy XXX.
 
 
@@ -155,7 +155,7 @@ plot(mtrys, err, main = "Percent error")
 ####### plot num.trees vs Time how long each forest takes to build
 times <- numeric(length(mtrys))
 err<-  numeric(length(mtrys))
-for (m in 1:length(num.trees)){
+for (m in 1:length(numtrees)){
   # Start the clock!
   ptm <- proc.time()
   fit <- ranger(V58 ~ ., 
@@ -211,25 +211,26 @@ table(test$Y, pred$predictions)/length(pred$predictions)
 ### (b) 
 **Gradually increase the max.depth, one step at a time, and evaluate the test set perfor- mance. Plot test error against depth. What depth seems to be the minimum depth needed for the forest to work? Does that match what you would have expected from our discus- sion of the activity? Is there harm from having a larger maximum depth than is strictly necessary?**
 
+We see that the error decreases to around 10% when depth > 6. This suggests the minimum depth would be around 6. This is a bit larger than we might have expected based on the activity, because we expected that a tree depth of 2 would work okay.  
+
 ```{r}
 # Plot test error against depth
-depths =c(1:100)
+depths =c(1:50)
 
 ######## Compare the accuracy on the test set for all the combinations.
 err <-numeric(length(depths))
 for (m in 1:length(depths)){
-  fit <- ranger(Y ~ ., 
+  fit <- ranger(Y ~ .,
                 max.depth=depths[m],
-                data = train, max.depth = 1)
+                data = train)
   
   # find the accuracy
   pred <- predict(fit, data = test, se.fit=TRUE)
   err[m] <- 1-length(test$Y[test$Y==pred$predictions])/length(test$Y)
 }
 
-par(mfrow=c(2,2))
-plot(mtrys, times, main = "Runtime")
-plot(mtrys, err, main = "Percent error")
+#par(mfrow=c(2,2))
+plot(depths, err, main = "Percent error")
 ```
 
 
