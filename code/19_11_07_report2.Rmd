@@ -1,0 +1,439 @@
+---
+title: "Science Forums"
+author: "Cathy Su"
+date: "19/10/2019"
+output:
+  pdf_document: default
+  html_document:
+    fig_caption: yes
+    highlight: tango
+bibliography: report2.bib
+---
+
+```{r setup, include=FALSE}
+#http://rosmarus.refsmmat.com/datasets/datasets/hormone-diversity/ 
+# https://rstudio-pubs-static.s3.amazonaws.com/387791_e70fec227cf24709a865cc0407b1776b.html
+
+#TODO
+# https://stats.stackexchange.com/questions/70558/diagnostic-plots-for-count-regression
+
+# libraries
+library(AER)
+library(stargazer)
+library(tidyverse)
+library(lattice)
+library(dagitty)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library("ggpubr")
+library(knitr)
+library(bestglm)
+
+opts_knit$set(eval.after = 'fig.cap')
+knitr::opts_chunk$set(echo = FALSE, width.cutoff=60, fig.pos = 'H')
+set.seed(1234)
+
+mod_stargazer <- function(...){
+  output <- capture.output(stargazer(...))
+  # The first three lines are the ones we want to remove...
+  output <- output[4:length(output)]
+  # cat out the results - this is essentially just what stargazer does too
+  cat(paste(output, collapse = "\n"), "\n")
+}
+
+# data
+data <- read.csv("../data/sfn-sample.csv",
+                     sep = ",", 
+                    header = T)
+
+####### NEW VARIABLES
+# early year
+data$startdate <- as.numeric(as.POSIXct(data$startdate)) - 10^9
+data$startdate <- data$startdate/max(data$startdate)
+
+# topics
+table <- read.csv("../data/forum_id.csv",
+                     sep = ",", 
+                     header = T)
+# add a NA level to the table.
+
+topics <- separate_rows(table, Forum.IDs, sep = ",")
+topics$Forum.IDs <- as.numeric(topics$Forum.IDs)
+setdiff(topics$Forum.IDs, data$forum_id)
+data$category <- plyr::mapvalues(data$forum_id,
+                              from = topics$Forum.IDs,
+                              to = as.character(topics$Category)) 
+data$category <- as.factor(data$category)
+levels(data$category)[1:32] <- NA
+#test <- lapply(data$category, function(x) as.character(as.numeric(x)))
+# proportion_deleted
+data$proportion_deleted <- data$deleted_posts/data$posts
+data$post_rate <- 0
+data$post_rate[data$duration > 0]<- data$posts[data$duration > 0]/(data$duration[data$duration > 0]) # if the denom is zero, set post rate to zero
+
+# posts per unique author
+data$posts_per_author <- data$posts/data$authors
+
+
+# > colnames(data)
+#  [1] "tid"                "state"              "posts"              "views"             
+#  [5] "duration"           "startdate"          "forum_id"           "authors"           
+#  [9] "deleted_posts"      "not_deleted"        "pinned"             "author_exp"        
+# [13] "author_banned"      "year_started"       "topic"              "proportion_deleted"
+# [17] "post_rate"
+
+
+####### CLEANED DATA
+dat <- data[data$pinned ==0 & !is.na(data$category) & data$posts <250,]
+#& data$views >0
+dat$category <- as.factor(dat$category)
+dat$author_banned <- as.factor(dat$author_banned)
+```
+
+## Executive Summary
+
+Moderators at online forums are always interested in growing participation while keeping a high quality discussion. Therefore, at times it becomes necessary to delete or close topics that might become problematic where forum members get into really heated discussions or the post become inappropriate in some way. The purpose of this study was to assess the variables that may influence which topics need to be closed. It is hypothesized that the type of post authors, category of topic, and number of deleted posts are important factors in which discussions will need to be shut down. To explore the relationship between these covariates and the discussion status of a topic, we are using a processed dataset from Nifty Datasets repository taken from a relevant online discussion forum. 
+
+Ten thousand discussion topics were randomly sampled from ScienceForums.Net (SFN). 13 features were extracted from the data including the variables of interest such as author diversity and the status (closed versus open). Among the subforums, there are topics ranging across all of science including "Speculations" where especially controversial discussions will be moved. After removal of outliers, 9021 topics passed the inclusion criteria. Originally 12 predictors were available and for our analysis we focused upon three qualitative and nine continuous covariates to study whether discussions will need to be closed. We built generalized linear models to better fit the count and categorical response variables of interest. We compared models with and without these predictors using the chi squared test and by examining the distribution of model residuals. 
+
+We found that the relationship between views and posts is positive and depends significantly upon the subforum. There are outlier topics in categories such as 'Medicine' which have disproportionately more views. Discussions with more authors also significantly tend to be closed. Discussions started from experienced authors tend to be more successful.
+
+Additionally, we selected predictors using best subset regression and found that subforum category, number of unique authors, proportion of deleted posts and the seniority of the author who starts the topic are all statistically significant predictors of the status of a topic and/or its success in terms of views and number of posts.  This suggests that these are the most important items for moderators to monitor when they consider whether a discussion can be allowed to continue.
+
+## Introduction
+
+Moderators at online forums are always interested in growing the participation while keeping a high quality discussion, but it's unclear what they should pay attention to when making this decision. Here we examine which topics on an online science forum, ScienceForums.Net, are at greatest risk of needing to be closed. This dataset represents a relevant scenario where moderators needed to make decisions on closing topics based upon our covariates of interest including author profile, author diversity, and subject matter of posts. We processed the data from its original format as taken from teh Nifty Datasets database which contains 12 predictors and 9021 topics of interest spread across 13 subforums such as "Speculations" and "Medicine". We believed that author diversity, author experience and subforum category are most important to determine number of posts, number of views and closed or open status of topics. Due to the nature of the count data and binary response variables we used generalized linear models to find the important explanatory variables behind the status of topics. We found important covariates by comparison of models with chi squared test and checked their predictive ability by using best subsets regression.
+
+## Methods
+
+### Removal of outliers and missing data
+
+Related to Figure \ref{fig:uni}, we removed the topics which are pinned since there seem to be very few cases so we may not be able to properly model what happened there. Looking at Figure \ref{fig:bar}, the only missing values in the data came from topics without categorization, which were also removed because we want to know the impact of the subforum type. Lastly we decided also on the basis of Figure \ref{fig:bar} to remove topics with number of posts greater than 250 which seem to be extreme outliers.
+
+### Calculation of additional variables 
+
+For the substantive questions we calculated some new variables as follows:
+
+* We converted the 'startdate' into POSIXct format which allows us to compare time elapsed precisely between dates. However to keep these numbers in a reasonable scale for the models, we subtracted 10^9 and divided the resulting number by the maximum startdate resulting in a (0,1] scale. In this scale, the entire approximattely 12 year period between the first and last topic is normalized to 1.
+* the 'proportion_deleted' is the number of deleted divided by total posts in the topic which is necessary for Q1.
+* The 'post_rate' is the number of posts divided by the 'duration' of the topic. If 'duration' is zero, the 'post_rate' was also assigned zero.
+* 'posts_per_author' is number of posts divided by the number of distinct 'authors'.
+
+## Exploratory Data Analysis 
+
+### Causal diagram 
+
+We may hypothesize that topics will need to be closed mainly due to offensive posts, or due to controversial discussion. Based on this, author diversity ('authors') could be important to affect the relationship between proportion of deleted posts, length of the discussion and topic status (open or closed) as in Figure \ref{fig:cause}. 
+
+```{r causal, fig.width=6, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships of experimental variables involved in relationship between proportion of deleted posts and topic status."}
+#pinned [pos="-1,1.5"]
+# author_exp  [pos="-1,2.0"]
+# startdate [pos="1.2,0"]
+# views [pos="2,2"]
+# topic_category [pos="2,0.5"]
+#  
+g <- dagitty('dag {
+    state [pos="0,1"]
+    authors [pos="1,0.5"]
+    proportion_deleted [pos="1,1"]
+    topic_category [pos="2,0.5"]
+    views [pos="2,1"]
+    posts [pos="2,0.75"]
+    startdate [pos="0,0.5"]
+    
+    startdate ->posts <- topic_category -> authors-> posts-> state
+    posts ->views <-startdate
+    proportion_deleted -> state
+    authors -> proportion_deleted 
+    authors -> views
+    authors -> state
+topic_category-> state
+}')
+
+plot(g)
+```
+
+### Univariate variable distributions
+
+Figure \ref{fig:uni} shows the distribution of topics which fall into each category for the binary variables. This shows us that almost no topics are deleted from view or pinned. However a small portion of topics (<10%) are closed, or started by a banned author.
+
+```{r uni, fig.width=10, fig.height=3, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:uni} Distribution of binary categorical variables."}
+theme_hw <- theme(plot.title = element_text(hjust = 0.5),
+        #axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()
+       # panel.grid.major =   element_line(colour = "gray",size=0.5)
+  )
+p1 <-ggplot(data, aes(x= as.factor(not_deleted)))+
+  geom_bar()#+theme_hw #+ ylab("Testosterone in pg/mL")
+p2 <-ggplot(data, aes(x= as.factor(state)))+
+  geom_bar()+theme_hw #+ ylab("Log(Testosterone in pg/mL)")
+p3 <-ggplot(data, aes(x=as.factor(pinned)))+
+  geom_bar()+theme_hw #+ ylab("Cortisol in nMol/L")
+p4 <-ggplot(data, aes(x=as.factor(author_banned)))+
+  geom_bar()+theme_hw #+ ylab("Log(cortisol in nMol/L)")
+grid.arrange(p2,p4,p1,  
+             p3, 
+             ncol = 4)
+```
+
+Additionally, although topic type is an important variable of interest, we found that there were many topic ids which were missing a categorization (about 10%, see the top boxplot of Figure \ref{fig:bar}) which we removed. Additionally the number of posts was very right skewed, and we trimmed the few topics with posts in excess of 250 since these seem like extreme outliers based on Figure \ref{fig:bar}). The distribution of views was similarly right skewed to the distribution of posts. This suggests that it may be better to use a quasipoisson model than a poisson model for these counts. Indeed, when we tested for overdispersion later we found that the views were both significantly overdispersed for a poisson model ( Q1, Table 2 Model 1). To overcome this, we have use quasibinomial and quasipoisson models. However, as shown later these models are not perfect as there are still many outliers.
+
+```{r bar, fig.width=5, fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:bar} Boxplots giving breakdown of posts by subforum, showing many outlier topics which have an extreme number of posts."}
+
+p1 <-ggplot(data, aes(x = category, y= posts))+
+  geom_boxplot() + coord_flip()#+theme_hw #+ ylab("Testosterone in pg/mL")
+  
+  
+  #geom_boxplot(mapping =aes(x=category, y = ..prop.., group = 1),  stat = "count") + coord_flip()#+theme_hw #+ ylab("Testosterone in pg/mL")
+grid.arrange(p1,  
+             ncol = 1)
+```
+
+In Figure \ref{fig:pairs} we also see a relationship between duration, author_exp and startdate. If time increases by one unit in startdate, the number of views or posts may increase which suggests that we may want to use it as an offset. However the limitation of this startdate variable is that we picked an arbitrary offset for the time (see methods) so that we could apply a log transformation when we can use it as an offset for a poisson glm. As well, it's not clear that we need to know the time to very high precision as we do here.
+
+```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs} Pairwise correlations of important variables including their Pearson correlation coefficient. Significant correlations are marked by the corresponding number of red astericks. We can see from the univariate distributions (graphs on the diagonal) that with the exception of 'year_started', these variables are mostly very right skewed and positive count or rate data."}
+# check relationships of all variables of interest
+#vars <- colnames(data)[c(2:13)]
+#cor(team_dat)
+#pairs(team_dat[vars], pch = 19,  lower.panel=NULL)
+library("PerformanceAnalytics")
+
+vars <- colnames(data)[c(3:6,8,12, 15:17)]
+chart.Correlation(data[vars], pch=19)
+#summary(data)
+#library(GGally)
+#ggpairs(data[,quant_vars])
+```
+
+## Q1. Relationship between views and posts
+
+Since views are a form of counts which are positive and do not have a defined maximum, to determine the relationship between views and posts, we start by fitting the glm with the poisson family, log link and log('starttime') as offset (Model 1 in Table 2). Based on our causal diagram, we chose to control for potential common cause 'authors' as well.We tested for overdispersion of this model with the package AER's dispersiontest we found that the views were both significantly overdispersed for a poisson model (p < 0.001, results not shown). Therefore we switched to using the quasipoisson which found the same significance levels for coeffcients with lower residual deviance (Model 2 in Table 2).
+
+However the residuals of this basic model shown in Figure \ref{fig:q1} suggest that the data have multiple outliers. The diagnostic plots are meant for linear models, which is why we see that for example the residuals are not highly normally distributed in the normal QQ plot. However we can still use the plot to see that there are a number of outliers very visible in the residuals vs. leverage plot. Rows 5483, 5592, 5997, and 6660 are some of the rows highlighted and these are topics belonging to "Miscellaneous sciences", "Speculations", and "Medicine". 
+
+We then added a term for subforum. We compared the models of these with and without the additional variable 'category' (which relates to their subforum) by chi squared test, and the results are in Table \ref{fig:q1}. It seems that the relationship with views and posts varies strongly by subforum since the chi squared test suggests the latter model has a significantly better fit (p < 0.001). 
+
+```{r q1, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent."}
+# > which(rownames(dat) == 8346,)
+# [1] 7519
+
+#temp <- dat[-7519,]
+# mod <- glm(views ~ posts + offset(log(startdate)), 
+#            family =quasipoisson(log), 
+#            data = dat)
+mod <- glm(views ~ posts + authors + offset(log(startdate)), 
+           family =quasipoisson(log), 
+           data = dat)
+par(mfrow=c(2,2))
+plot(mod)
+
+mod1 <- glm(views ~ posts + authors + offset(log(startdate)), 
+           family =poisson(log), 
+           data = dat)
+
+dispersiontest(mod1) # p < 0.001
+
+# mod1 <-glm(views ~ posts + category+ startdate, 
+#            family =quasipoisson(log), 
+#            data = dat)
+# par(mfrow=c(2,2))
+# plot(mod1)
+
+mod2 <-glm(views ~ posts + category+ authors+ offset(log(startdate)), 
+           family =quasipoisson(log), 
+           data = dat)
+#par(mfrow=c(2,2))
+#plot(mod2)
+
+res <-anova(mod, 
+      mod2,
+      #type="II", 
+      test="Chisq")
+
+# res <- anova(full_mod2,
+#           full_mod1)
+kable(res, caption = "Chi squared test models with and without controlling for subforum", digits = 3, format = "pandoc")
+
+# find the identity of the rows.
+
+# check influence plot
+# library(car)
+# influencePlot(mod)
+
+stargazer(mod1,
+          mod,
+          mod2,
+          model.names = FALSE,
+           model.numbers = TRUE,
+          #object.names = TRUE,
+        #column.labels = c("", "model 4"),
+          flip = TRUE,
+          header=FALSE, type = "latex",
+          intercept.bottom = FALSE, out.header = FALSE,
+          label = "tab:regression",
+          font.size="small",
+          column.sep.width = "1pt",
+          single.row = TRUE,
+          omit.table.layout = "n",
+          #model.names = FALSE, # remove model names
+          title = "Terms included in models of views vs. posts")
+```
+
+## Q2. Diverse discussions closed or deleted
+
+To check whether author diversity affects topic state, we modelled the responses 'state' and 'not_deleted' against the predictor 'authors'. Since the response is binary this time we used a quasibinomial family glm with logit link, with 'starttime' as offset. Based on our causal diagram we also controlled for subforum and number of posts. These were decent models of the topics that were open and not deleted according to the residual vs leverage plots but did not represent the closed and deleted topics very well (LHS of Figure \ref{fig:test}). This makes sense however as we have a binary variable where one outcome is significantly rarer as we saw in Figure \ref{fig:uni}.  
+
+However with authors added as covariate, the number of outliers is somewhat less (RHS of Figure \ref{fig:test}). Furthermore the result of chi squared test is given in Table 3-4. This suggests that the model with authors better represents the data and discussions involving more authors are significantly more likely to be closed (p < 0.05) or deleted (p < 0.001). The coefficients on the covariate 'authors' are  0.042451 and 0.2245 in each case respectively. However only the coefficient of 0.042451 for the model of being closed is significant (p < 0.01)
+
+The reference category of this model is Biology. The results can be interpreted to mean that the log odds of being closed increases by exp(0.042451) or about 4 percent per period of about 12 years (see methods for explanation of this unit) for every unique author, relative to a topic with no authors of the category Biology while control.   
+
+```{r q2, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:q2} Residual plots of each of the models of 'state' (top row) and 'not_deleted' (bottom row). Each graph on teh RHS includes the covariate 'authors' and LHS does not. "}
+
+mod <- glm(state ~category+posts +offset(startdate) , 
+           family =quasibinomial, 
+           data = dat)
+par(mfrow=c(2,2))
+plot(mod, which=5, caption = NULL)
+
+mod2 <-glm(state  ~ authors+posts + category+offset(startdate), 
+           family =quasibinomial, 
+           data = dat)
+plot(mod2, which=5, caption = NULL)
+
+res <-anova(mod, 
+      mod2,
+      #type="II", 
+      test="Chisq")
+
+# res <- anova(full_mod2,
+#           full_mod1)
+kable(res, caption = "Comparison of model of state with and without controlling for authors", digits = 3, format = "pandoc")
+dat$not_deleted[dat$not_deleted == -1] <- 0 # map to zero
+
+mod3 <- glm(not_deleted~ posts+category+offset(startdate), 
+           family =quasibinomial, 
+           data = dat)
+#par(mfrow=c(2,2))
+plot(mod3, which=5, caption = NULL)
+
+mod4 <-glm(not_deleted~ posts +authors + offset(startdate), 
+           family =quasibinomial, 
+           data = dat)
+#par(mfrow=c(2,2))
+plot(mod4, which=5, caption = NULL)
+#par(mfrow=c(2,2))
+
+res <-anova(mod3, 
+      mod4,
+      #type="II", 
+      test="Chisq")
+
+kable(res, caption = "Comparison of model of deleted topics with and without controlling for authors", digits = 3, format = "pandoc")
+```
+
+## Q3 Do topics with deleted posts tend to get closed more often?
+
+To check whether deleted posts tend to get closed more often, we checked if the full quasibinomial model of the response 'state' from Q2 **views ~ posts + category + authors + offset(log(startdate))**,  could be improved by adding the predictor 'proportion_deleted' by chi squared test. The inclusion of proportion deleted does not significantly improve the model (p > 0.05) as shown in the Table 5. This suggests proportion of deleted posts is not a statistically significant predictor of topic state. 
+
+```{r q3, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:q3} Model od state  ~ proportion_deleted+ authors+posts + category+offset(startdate)"}
+
+mod5 <- glm(state  ~ proportion_deleted+ authors+posts + category+offset(startdate), 
+           family =quasibinomial, 
+           data = dat)
+#par(mfrow=c(2,2))
+#plot(mod)
+
+res <-anova(mod2, 
+      mod5,
+      #type="II", 
+      test="Chisq")
+
+kable(res, caption = "Comparison of model of state from Q2 with and without controlling for proportion of deleted posts", digits = 3, format = "pandoc")
+```
+
+## Q4. Are members who have been registered for longer before starting the topic more successful at starting active discussions?
+
+To check whether long registered members may be more successful, we modelled the response 'posts' as proxy for activity of the topic against the predictor 'author_exp'. Since the response is a positive count we use quasipoisson with log link. From our causal diagram we decided to control for subforum and proportion_deleted with log(startdate) as offset. The coefficients of this model are given in Table 6 and the coefficient of 'author_exp' is -1.399e-04 which is significantly different from zero (p < 0.01). 
+
+The reference category of this model is also Biology. The results can be interpreted to mean that the count of posts increases by exp(0.042451) or about 1 post per period of about 12 years for every additional day that the topic starting author is active, relative to the post count in topics in Biology started by authors that are brand new.
+
+```{r q4, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:q4}Diverse discussions"}
+# Figure \ref{fig:pairs} did not show a strong correlation between these two variables
+mod5 <- glm(posts  ~ proportion_deleted+ author_exp+category+offset(log(startdate)), 
+           family =quasipoisson, 
+           data = dat)
+#par(mfrow=c(2,2))
+#plot(mod5)
+kable(coef(mod5))
+```
+
+## Q5. Predicting whether a given topic will be closed
+
+To build a classification model to predict whether a given topic will be closed, we chose 'state' as the response variable and then selected the potential predictors based upon whether they would be available while the topic is active. This means we could pick from only the following variables:
+
+```{r, echo=TRUE}
+vars <- colnames(dat)[c(6,12, 13, 14:16)]
+vars
+```
+
+To build a classification model we divided our data randomly into 10-fold and used 1 fold as the test set.  
+
+First we picked the best glm model using the training set, we performed best subsets regression using exhaustive search and AIC with the 'bestglm' package. Since the response is a binary variable, we chose models from the binomial family with logit link. Due to the categorical variables, we used AIC instead of cross validation to pick the best model since if we used cross validation some subsets will not contain all the categories. The coefficients of the best model is shown in Table \ref{fig:cv}. It seems that the most important variables for prediction include 'startdate', 'author_exp', 'author_banned', 'category' of subforum, 'proportion_deleted' and 'post_rate'.
+
+```{r cv, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:cv} Best model picked by GLM in 2"}
+dat$y <- dat$state
+newvars <- c(vars, "y")
+
+testIndexes <- sample(nrow(dat),round(nrow(dat)/10))
+testData <- dat[testIndexes,newvars]
+trainData <- dat[-testIndexes,newvars]
+
+# k folds.
+  # best fit on the train data (regsubsets )
+  best.fit=bestglm(Xy=trainData,
+                   family = binomial,
+                   IC = "AIC",
+                   method="exhaustive")
+
+ # best.fit$BestModels
+  res <- summary(best.fit$BestModel)
+  # performance on the test data
+#   for(i in 1:10){ #
+#     pred=predict(best.fit,team_dat[folds==k,vars],id=i)
+#     cv.errors[k,i]=mean((team_dat$final.performance[folds==k]-pred)^2)
+#   }
+# }
+# #source("logit_dotplot.R")
+# #logit_dotplot()
+#x <- predict(best.fit$BestModel, newdata = testData)
+
+#mean((testData$y-x)^2)
+#   # PLOT PREDICTIONS
+#   # https://www.barelysignificant.com/post/glm/
+#   # d %>%
+#   #   ggplot(aes(x = weight, y = height) ) +
+#   #   geom_line(aes(y = predict(mod1)), size = 1) +
+#   #   geom_point(size = 2, alpha = 0.3) +
+#   #   geom_segment(
+#   #       x = wght, xend = wght,
+#   #       y = 0, yend = predict(mod1, newdata = data.frame(weight = wght) ),
+#   #       linetype = 2) +
+#   #   geom_segment(
+#   #       x = 0, xend = wght,
+#   #       y = predict(mod1, newdata = data.frame(weight = wght) ),
+#   #       yend = predict(mod1, newdata = data.frame(weight = wght) ),
+#   #       linetype = 2) +
+#   #   theme_bw(base_size = 12)
+#   
+#   
+kable(coef(res, 8), format = "latex",caption = "Coefficients of generalized linear model of binomial family picked by best subsets regression with AIC")
+```
+
+## Conclusion
+
+We have examined teh relationship between many covariates of interest for the ScienceForums.Net dataset in predicting which topics will need to be closed. The data consists of counts and binary factors. Based upon our analysis we found that the relationship between views and posts is positive and depends significantly upon the subforum. There are outlier topics in categories such as 'Medicine' which have disproportionately more views. Discussions with more authors also significantly tend to be closed, but those with a higher proportion of deleted posts may not be. Lastly, discussions started from experienced authors tend to be more successful.
+
+However, there are some caveats to this analysis. We found in our EDA that the counts are overdispersed. To overcome this, we have use quasibinomial and quasipoisson models. However these models were still a bit difficult to assess using traditional residual plots and we found outliers indicating they are not a perfect fit. We also chose to discard some variables based upon our EDA and our reasoning about the relationship between variables collected in the study but we do not have expert knowledge in this area. Depending on the outliers removed, the conclusions of the models we have built could change.
+
+
