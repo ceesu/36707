@@ -63,108 +63,99 @@ table(spam.test$V58, pred)
 
 #### (b) 
 
-**By default, svm uses a radial kernel, but it also supports linear, polynomial, and sigmoid kernels. Each has different tuning parameters, such as the degree of the polynomial kernel or 𝛾 in the radial basis. Fortunately, e1071 provides the tune.svm function to automa cally perform cross-validation to select the best tuning parameters. Build the best classifier for each kernel, tuning over reasonable ranges of the tuning pa- rameters, and report your results. Which kernel performs best on this data? Which kernel performs worst, and why might it be the worst?**
+**By default, svm uses a radial kernel, but it also supports linear, polynomial, and sigmoid kernels. Each has different tuning parameters, such as the degree of the polynomial kernel or gamma. perform cross-validation to select the best tuning parameters. Build the best classifier for each kernel, tuning over reasonable ranges of the tuning pa- rameters, and report your results. Which kernel performs best on this data? Which kernel performs worst, and why might it be the worst?**
 
-SThe best performing kernel is
+These are the tuning parameters for each kernel:
+
+* radial: cost, gamma
+* linear: cost
+* polynomial: cost, coef0, degree,  gamma
+* sigmoid: cost, coef0,  gamma
+
+I found that tuning the parameters in different function calls vs together seemed to give the same results. Therefore I tuned and then printed the outputs as below. The best performing kernel is
+
 ```{r}
 type <- c("linear", "polynomial","sigmoid", "radial")
 
-f# tune 
-params <- tune.svm(label~., data=data,
-                                    gamma=10^(-6:-2), cost=10^(1:2))
+####### LINEAR
+print(type[1])
+# tune 
+params <- tune.svm(V58 ~ ., data=spam.train, 
+                   cost=10^(0:4)) 
+                   #gamma=0.5, 
+                   #coef0=0.0,
+                   #degree=2)
+fit <- svm(V58 ~ ., data = spam.train,
+           kernel = type[1],
+           #degree=params$best.parameter[[1]],
+           cost=params$best.parameter[[1]]
+           #coef0=params$best.parameter[[3]], 
+           #gamma=params$best.parameter[[2]])
+           )
+#summary(fit)
+pred <- predict(fit, newdata = spam.test)
+table(spam.test$V58, pred)/length(pred)
 
-or(k in type){
-  print(k)
-  ftune.svm(spam.train, spam.train, kernel = k)
-  it <- svm(V58 ~ ., data = spam.train,
-             kernel = k)
-  #summary(fit)
-  pred <- predict(fit, newdata = spam.test)
-  table(spam.test$V58, pred)
-}
+####### polynomial
+print(type[2])
+# tune 
+params <- tune.svm(V58 ~ ., data=spam.train, 
+                   cost=10^(0:4), 
+                   gamma=10^(-4:-1), 
+                   coef0=0.0,
+                   degree=1:4)
+fit <- svm(V58 ~ ., data = spam.train,
+           kernel = type[2],
+           degree=params$best.parameter[[1]],
+           cost=params$best.parameter[[4]],
+           coef0=params$best.parameter[[3]], 
+           gamma=params$best.parameter[[2]])
+#summary(fit)
+pred <- predict(fit, newdata = spam.test)
+table(spam.test$V58, pred)/length(pred)
+
+####### polynomial
+print(type[3])
+# tune 
+params <- tune.svm(V58 ~ ., data=spam.train, 
+                   cost=10, 
+                   gamma=0.5, 
+                   coef0=0.0,
+                   degree=2)
+fit <- svm(V58 ~ ., data = spam.train,
+           kernel = k,
+           degree=params$best.parameter[[1]],
+           cost=params$best.parameter[[4]],
+           coef0=params$best.parameter[[3]], 
+           gamma=params$best.parameter[[2]])
+#summary(fit)
+pred <- predict(fit, newdata = spam.test)
+table(spam.test$V58, pred)/length(pred)
+
+
+####### polynomial
+print(type[4])
+# tune 
+params <- tune.svm(V58 ~ ., data=spam.train, 
+                   cost=10, 
+                   gamma=0.5, 
+                   coef0=0.0,
+                   degree=2)
+fit <- svm(V58 ~ ., data = spam.train,
+           kernel = k,
+           degree=params$best.parameter[[1]],
+           cost=params$best.parameter[[4]],
+           coef0=params$best.parameter[[3]], 
+           gamma=params$best.parameter[[2]])
+#summary(fit)
+pred <- predict(fit, newdata = spam.test)
+table(spam.test$V58, pred)/length(pred)
 
 ```
 ### (c) 
 **Compare the accuracyyouhaveobtainedheretotheaccuracyyouobtainedonHomework 8 while using random forests**
 
-Here we used the impurity measure to assess importance, which calculates importance "as the sum over the number of splits (accross all tress
-
-## Q5
-
-Unbalanced classes. Simulate a dataset with two variables, 𝑋1 and 𝑋2, and an outcome vari- able 𝑌 ∈ {0, 1}. Make the dataset have a linear decision boundary between 𝑌 = 1 and 𝑌 = 0. But put the code that simulates data into a function, and make one of the parameters of that function be the fraction of cases that should have 𝑌 = 1. This way, we can simulate what happens when the classes are imbalanced.
-
-### (a) 
-**Set the fraction to 0.5: perfect balance. Run a logistic regression and an SVM on the data to predict 𝑌. Compare the confusion matrices on a test set (just run your function again to get a test set!). How do the error rates compare, and do the error rates differ for points with 𝑌 = 0 vs. those with 𝑌 = 1?**
-
-We see from the normalized confusion matrix that the error rate is high, at about 50%.
-
-```{r}
-
-make_data <- function(N=150) {
-  X <- matrix(runif(2 * N, min=0, max=10), nrow=N, ncol=2)
-  Y <- ifelse((X[, 1] < 5 & X[, 2] < 5) | (X[, 1] > 5 & X[, 2] > 5), rbinom(N, 1, 0.1), rbinom(N, 1, 0.9))
-  
-  stopifnot(nrow(X) == length(Y)) # sanity check!
-  new <- cbind(as.data.frame(X), as.data.frame(Y))
-  new$Y <- as.factor(new$Y)
-  #colnames(new)[-1] <- "Y"
-  return(new)
-}
-
-spam <- make_data(N=800)
-training_rows <- sample.int(nrow(spam), round(nrow(spam) / 3))
-
-train <- spam[training_rows, ]
-test <- spam[-training_rows, ]
-
-fit <- ranger(Y ~ ., data = train, max.depth = 1)
-pred <- predict(fit, data = test)
-
-table(test$Y, pred$predictions)/length(pred$predictions)
-```
-
-### (b) 
-
-**Now repeat this analysis with fractions varying from 0.6 to 0.95. Look at the confusion matrices as the classes become less balanced. What happens to the errors for logistic regression? What kinds of errors become more common? Be sure to distinguish between predicting 𝑌̂ = 0 when 𝑌 = 1 from predicting 𝑌̂ = 1 when 𝑌 = 0**
-
-We see that the error decreases to around 10% when depth > 4. This depth is a bit larger than we might have expected based on the in class activity (2), but it could be because this allows splitting along each of the two main dimensions multiple times. 
-
-Increased depth does not seem to lead to higher error rate in the test set. There might still be harm from allowing trees with such large depth that they could dramatically increase the runtime. 
-
-```{r}
-# Plot test error against depth
-depths =c(1:50)
-
-######## Compare the accuracy on the test set for all the combinations.
-err <-numeric(length(depths))
-for (m in 1:length(depths)){
-  fit <- ranger(Y ~ .,
-                max.depth=depths[m],
-                data = train)
-  
-  # find the accuracy
-  pred <- predict(fit, data = test, se.fit=TRUE)
-  err[m] <- 1-length(test$Y[test$Y==pred$predictions])/length(test$Y)
-}
-
-#par(mfrow=c(2,2))
-plot(depths, err, main = "Percent error")
-```
-
-
-### (c) 
-
-**What happens to the errors for SVMs in the same case? Show a graph or table summariz- ing the results and comparing SVMs to logistic regression.**
-
-In our dataset we have 800 samples, with a 75:25 train:test split and we found that:
-
-
-### (d) 
-
-**Describe, in words, why the difference you observed should exist. Give your explanation in terms of how SVMs and logistic regression find the decision boundary, and what loss functions they use.**
-
-In our dataset we have 800 samples, with a 75:25 train:test split and we found that:
-
+We see that based on the confusion matrix, 
 
 
 ## Q3. 
