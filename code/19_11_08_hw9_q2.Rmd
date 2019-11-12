@@ -141,23 +141,51 @@ summary(model)
 ##### d) Apply this model to the training data in order to obtain a pre- dicted class label for each training observation. Plot the ob- servations, colored according to the predicted class labels. The decision boundary should be linear.
 
 ```{r}
-
+pred_y <- predict.glm(model, type="response")
+plot(x1, x2, col = as.factor(pred_y>0.5))
 ```
 
 
 ##### e) Now fit a logistic regression model to the data using non-linear functions of X1 and X2 as predictors (e.g. X12, X1 ×X2, log(X2), and so forth).
 
+```{r}
+model <- glm(y ~x1 + x2 +  poly(x2,2)+ poly(x1,1),family=binomial(link='logit'))
+summary(model)
+```
+
 ##### f) Apply this model to the training data in order to obtain a pre- dicted class label for each training observation. Plot the ob- servations, colored according to the predicted class labels. The decision boundary should be obviously non-linear. If it is not, then repeat (a)-(e) until you come up with an example in which the predicted class labels are obviously non-linear.
+
+```{r}
+pred_y <- predict.glm(model, type="response")
+plot(x1, x2, col = as.factor(pred_y>0.5))
+```
 
 ##### g) Fit a support vector classifier to the data with X1 and X2 as predictors. Obtain a class prediction for each training observa- tion. Plot the observations, colored according to the predicted class labels.
 
+```{r}
+fit <- svm(y ~x1 + x2, data = spam.train,kernel = "linear")
+pred <- predict(fit)
+plot(x1, x2, col = as.factor(pred>0.5))
+```
+
 ##### h) Fit a SVM using a non-linear kernel to the data. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.
+
+```{r}
+fit <- svm(y ~x1 + x2, data = spam.train,kernel = "radial")
+pred <- predict(fit)
+plot(x1, x2, col = as.factor(pred>0.5))
+```
 
 ##### i) Comment on your results.
 
 * In what space is the decision boundary linear?
 * If we can make logistic regression produce nonlinear decision boundaries by adding ap-
 propriate covariates, why is the kernel trick in SVMs useful?**
+
+The decision boundary for this data is linear if we square both x1 and x2, since the plot of the classes from part b is symmetric across x1=0 and x2=0.
+
+We can get the nonlinear decision boundary through logistic regression, but it requires us to manually add the formula with new covariates and also as we see above the fit is not as good as with the SVM with radial kernel. This suggests we need to invest additional time to tune these new covariates.
+
 
 ## Q4
 
