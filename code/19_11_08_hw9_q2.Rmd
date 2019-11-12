@@ -76,7 +76,7 @@ These are the tuning parameters for each kernel:
 * polynomial: cost, coef0, degree,  gamma
 * sigmoid: cost, coef0,  gamma
 
-I found that tuning the parameters in different function calls vs together seemed to give the same results. Therefore I tuned once, and then printed the outputs as below. The best performing kernel is
+I found that tuning the parameters in different function calls vs together seemed to give the same results. Therefore I tuned once, and then printed the outputs as below. The best performing kernel seems to be the 
 
 ```{r}
 type <- c("linear", "polynomial","sigmoid", "radial")
@@ -95,10 +95,12 @@ for(k in type){
              degree=params$best.parameter[[1]],
              cost=params$best.parameter[[4]],
              coef0=params$best.parameter[[3]], 
-             gamma=params$best.parameter[[2]])
+             gamma=params$best.parameter[[2]],
+             probability = TRUE)
   #summary(fit)
   pred <- predict(fit, newdata = spam.test)
-  table(spam.test$V58, pred)/length(pred)
+  t <- table(spam.test$V58, pred)/length(pred)
+  print(kable(t))
 }
 ```
 ### (c) 
@@ -109,7 +111,50 @@ We see that based on the confusion matrix of each type, the
 
 ## Q3. 
 
-**An Introduction to Statistical Learning, chapter 9, exercise 5 (pp. 369–370). For part (i), when commenting on your results, answer these questions:
+An Introduction to Statistical Learning, chapter 9, exercise 5 (pp. 369–370). 
+
+**We have seen that we can fit an SVM with a non-linear kernel in order to perform classification using a non-linear decision boundary. We will now see that we can also obtain a non-linear decision boundary by performing logistic regression using non-linear transformations of the features.**
+
+##### a) Generate a data set with n = 500 and p = 2, such that the obser- vations belong to two classes with a quadratic decision boundary between them. For instance, you can do this as follows:
+
+```{r}
+x1=runif(500)-0.5
+x2=runif(500)-0.5
+y=1*(x1^2-x2^2 > 0)
+```
+
+##### b) Plot the observations, colored according to their class labels. Your plot should display X1 on the x-axis, and X2 on the y- axis.
+
+```{r}
+plot(x1, x2, col = as.factor(y))
+```
+
+
+##### c) Fit a logistic regression model to the data, using X1 and X2 as predictors.
+
+```{r}
+model <- glm(y ~x1 + x2,family=binomial(link='logit'))
+summary(model)
+```
+
+
+##### d) Apply this model to the training data in order to obtain a pre- dicted class label for each training observation. Plot the ob- servations, colored according to the predicted class labels. The decision boundary should be linear.
+
+```{r}
+
+```
+
+
+##### e) Now fit a logistic regression model to the data using non-linear functions of X1 and X2 as predictors (e.g. X12, X1 ×X2, log(X2), and so forth).
+
+##### f) Apply this model to the training data in order to obtain a pre- dicted class label for each training observation. Plot the ob- servations, colored according to the predicted class labels. The decision boundary should be obviously non-linear. If it is not, then repeat (a)-(e) until you come up with an example in which the predicted class labels are obviously non-linear.
+
+##### g) Fit a support vector classifier to the data with X1 and X2 as predictors. Obtain a class prediction for each training observa- tion. Plot the observations, colored according to the predicted class labels.
+
+##### h) Fit a SVM using a non-linear kernel to the data. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.
+
+##### i) Comment on your results.
+
 * In what space is the decision boundary linear?
 * If we can make logistic regression produce nonlinear decision boundaries by adding ap-
 propriate covariates, why is the kernel trick in SVMs useful?**
