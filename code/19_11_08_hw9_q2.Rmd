@@ -43,6 +43,8 @@ library("e1071")
 
 **Use a support vector machine to classify emails as spam or ham. The e1071 package on CRAN provides a svm function that will be useful. Start by using the default parameters of the svm function and report your test-set accuracy.**
 
+The test set accuracy with default parameters is about 60%.
+
 ```{r}
 # data
 spam <- read.csv("../data/gam-spam.csv", header=FALSE)
@@ -62,7 +64,7 @@ for (col in cols) {
 fit <- svm(V58 ~ ., data = spam.train)
 #summary(fit)
 pred <- predict(fit, newdata = spam.test, probability = TRUE)
-table(spam.test$V58, pred)
+table(spam.test$V58, pred)/length(pred)
 ```
 
 #### (b) 
@@ -76,7 +78,7 @@ These are the tuning parameters for each kernel:
 * polynomial: cost, coef0, degree,  gamma
 * sigmoid: cost, coef0,  gamma
 
-I found that tuning the parameters in different function calls vs together seemed to give the same results. Therefore I tuned once, and then printed the outputs as below. The best performing kernel seems to be the 
+I found that tuning the parameters in different function calls vs together seemed to give the same results. Therefore I tuned once, and then printed the outputs as below. The best performing kernel seems to be the radial kernel with about 94% accuracy, but sigmoid and polynomial do about as good. Linear kernel performs the worst. This result could be because the boundary between the classes is not linear. 
 
 ```{r}
 type <- c("linear", "polynomial","sigmoid", "radial")
@@ -87,7 +89,7 @@ params <- tune.svm(V58 ~ ., data=spam.train,
                    coef0=10^(-1:2),
                    degree=1:4)
 
-####### polynomial
+####### fit the kernels
 for(k in type){
   print(k)
   fit <- svm(V58 ~ ., data = spam.train,
@@ -105,17 +107,15 @@ for(k in type){
 ```
 ### (c) 
 
-**Compare the accuracyyouhaveobtainedheretotheaccuracyyouobtainedonHomework 8 while using random forests**
+**Compare the accuracy youhaveobtainedheretotheaccuracyyouobtainedonHomework 8 while using random forests**
 
-We see that based on the confusion matrix of each type, the 
+With random forests we observed about 5% error. We see that despite small differences based upon kernel type, this is similar to what we achieve with the kernels when tuned.
 
-## Q3. 
-
-An Introduction to Statistical Learning, chapter 9, exercise 5 (pp. 369–370). 
+## Q3. An Introduction to Statistical Learning, chapter 9, exercise 5 (pp. 369–370). 
 
 **We have seen that we can fit an SVM with a non-linear kernel in order to perform classification using a non-linear decision boundary. We will now see that we can also obtain a non-linear decision boundary by performing logistic regression using non-linear transformations of the features.**
 
-##### a) Generate a data set with n = 500 and p = 2, such that the obser- vations belong to two classes with a quadratic decision boundary between them. For instance, you can do this as follows:
+##### a) Generate a data set with n = 500 and p = 2, such that the observations belong to two classes with a quadratic decision boundary between them.
 
 ```{r}
 x1=runif(500)-0.5
@@ -180,12 +180,11 @@ plot(x1, x2, col = as.factor(pred>0.5))
 
 * In what space is the decision boundary linear?
 * If we can make logistic regression produce nonlinear decision boundaries by adding ap-
-propriate covariates, why is the kernel trick in SVMs useful?**
+propriate covariates, why is the kernel trick in SVMs useful?
 
-The decision boundary for this data is linear if we square both x1 and x2, since the plot of the classes from part b is symmetric across x1=0 and x2=0.
+The decision boundary for this data is linear if we square both x1 and x2, since we know they are separated by a quadratic boundary.
 
-We can get the nonlinear decision boundary through logistic regression, but it requires us to manually add the formula with new covariates and also as we see above the fit is not as good as with the SVM with radial kernel. This suggests we need to invest additional time to tune these new covariates.
-
+We can get the nonlinear decision boundary through logistic regression, but it requires us to manually add the new covariates. Also as we see above the fit is not as good as with the SVM with radial kernel, so we need to invest additional time to tune the fit with these new covariates.
 
 ## Q4
 
@@ -198,32 +197,70 @@ If the parameter C is large, then any wrong classification is penalized a lot. T
 **Unbalanced classes. Simulate a dataset with two variables, X1 and X2, and an outcome variable Y. Make the dataset have a linear decision boundary between Y = 1 and Y = 0. But put the code that simulates data into a function, and make one of the parameters of that function be the fraction of cases that should have Y = 1. This way, we can simulate what happens when the classes are imbalanced.**
 
 ```{r}
-simulate <- function(fraction=0.5) {
-  X <- matrix(runif(2 * N, min=0, max=10), nrow=N, ncol=2)
-  Y <- ifelse((X[, 1] < 5 & X[, 2] < 5) | (X[, 1] > 5 & X[, 2] > 5), rbinom(N, 1, 0.1), rbinom(N, 1, 0.9))
+simulate <- function(fraction) {
+  length= 10.0
+  X1  <- matrix(runif(100, min=0, max=10),ncol=1)
+  X2 <- matrix(runif(100, min=0, max=10),ncol=1)
+  Y <- ifelse((X1> length * fraction), 0, 1) #linear decision boundary
+  # Y <- ifelse((X1 > length*fraction & X2 > length*fraction), 0, 1)
   
-  stopifnot(nrow(X) == length(Y)) # sanity check!
-  new <- cbind(as.data.frame(X), as.dsata.frame(Y))
+  #stopifnot(nrow(X1) == length(Y)) # sanity check!
+  new <- cbind(as.data.frame(X1), as.data.frame(X2), as.data.frame(Y))
+  colnames(new)  <- c("X1", "X2", "Y")
   new$Y <- as.factor(new$Y)
   #colnames(new)[-1] <- "Y"
   return(new)
 }
 ```
 
-
 ### a)
 
 **Set the fraction to 0.5: perfect balance. Run a logistic regression and an SVM on the data to predict Y. Compare the confusion matrices on a test set (just run your function again to get a test set!). How do the error rates compare, and do the error rates differ for points with Y = 0 vs. those with Y = 1?**
 
+```{r}
+new <- simulate(0.5)
+new_test <- simulate(0.5)
+# run SVM
+fit <- svm(Y ~X1+X2, data = new,
+           kernel = "radial")
+pred <- predict(fit)
+
+# run LR
+model <- glm(Y ~X1+X2,family=binomial(link='logit'))
+t <- table(spam.test$V58, pred)/length(pred)
+  print(kable(t))
+```
 
 ### b)
 
 **Now repeat this analysis with fractions varying from 0.6 to 0.95. Look at the confusion matrices as the classes become less balanced.What happens to the errors for logistic regression? What kinds of errors become more common?**
 
+```{r}
+frac <- seq(0.6, 0.95, length.out= 5)
+errors <- 
+for(f in frac){
+  new <- simulate(fraction = f)
+  fit <- svm(Y ~X1+X2, data = new,
+           kernel = "radial")
+  # logistic
+  model <- glm(Y ~X1+X2,family=binomial(link='logit'))
+  # SVM
+  fit <- svm(Y ~X1+X2, data = new,
+           kernel = "radial")
+  pred <- predict(fit)
+  plot(X1, X2, col = as.factor(Y))
+}
+
+```
+
 ### c)
 
 **What happens to the errors for SVMs in the same case? Show a graph or table summarizing the results and comparing SVMs to logistic regression.**
 
+
+
 ### d)
 
 **Describe, in words, why the difference you observed should exist. Give your explanation in terms of how SVMs and logistic regression find the decision boundary, and what loss functions they use.**
+
+SVMs find the decision boundary by 

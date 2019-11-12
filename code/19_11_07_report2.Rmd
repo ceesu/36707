@@ -85,10 +85,19 @@ data$posts_per_author <- data$posts/data$authors
 
 
 ####### CLEANED DATA
-dat <- data[data$pinned ==0 & !is.na(data$category) & data$posts <250,]
+dat <- data[data$pinned ==0 & !is.na(data$category) & data$posts <500,]
 #& data$views >0
 dat$category <- as.factor(dat$category)
 dat$author_banned <- as.factor(dat$author_banned)
+
+
+##### Changes made
+# * expand executive summary to 1 page
+# * removed more outliers to address the fit given in Figure 3. 
+# * explain dispersion test
+# * formatting: remove R code and text running into margins
+# * add more explanations of figures
+
 ```
 
 ## Executive Summary
