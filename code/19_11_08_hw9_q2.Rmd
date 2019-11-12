@@ -13,6 +13,10 @@ output:
 # })
 library(knitr)
 opts_knit$set(eval.after = 'fig.cap')
+
+# for tuning:
+# http://www.louisaslett.com/Courses/Data_Mining/ST4003-Lab7-Introduction_to_Support_Vector_Machines.pdf
+
 ```
 
 ```{r setup, include=FALSE}
@@ -72,91 +76,36 @@ These are the tuning parameters for each kernel:
 * polynomial: cost, coef0, degree,  gamma
 * sigmoid: cost, coef0,  gamma
 
-I found that tuning the parameters in different function calls vs together seemed to give the same results. Therefore I tuned and then printed the outputs as below. The best performing kernel is
+I found that tuning the parameters in different function calls vs together seemed to give the same results. Therefore I tuned once, and then printed the outputs as below. The best performing kernel is
 
 ```{r}
 type <- c("linear", "polynomial","sigmoid", "radial")
 
-####### LINEAR
-print(type[1])
-# tune 
-params <- tune.svm(V58 ~ ., data=spam.train, 
-                   cost=10^(0:4)) 
-                   #gamma=0.5, 
-                   #coef0=0.0,
-                   #degree=2)
-fit <- svm(V58 ~ ., data = spam.train,
-           kernel = type[1],
-           #degree=params$best.parameter[[1]],
-           cost=params$best.parameter[[1]]
-           #coef0=params$best.parameter[[3]], 
-           #gamma=params$best.parameter[[2]])
-           )
-#summary(fit)
-pred <- predict(fit, newdata = spam.test)
-table(spam.test$V58, pred)/length(pred)
-
-####### polynomial
-print(type[2])
-# tune 
 params <- tune.svm(V58 ~ ., data=spam.train, 
                    cost=10^(0:4), 
                    gamma=10^(-4:-1), 
-                   coef0=0.0,
+                   coef0=10^(-1:2),
                    degree=1:4)
-fit <- svm(V58 ~ ., data = spam.train,
-           kernel = type[2],
-           degree=params$best.parameter[[1]],
-           cost=params$best.parameter[[4]],
-           coef0=params$best.parameter[[3]], 
-           gamma=params$best.parameter[[2]])
-#summary(fit)
-pred <- predict(fit, newdata = spam.test)
-table(spam.test$V58, pred)/length(pred)
 
 ####### polynomial
-print(type[3])
-# tune 
-params <- tune.svm(V58 ~ ., data=spam.train, 
-                   cost=10, 
-                   gamma=0.5, 
-                   coef0=0.0,
-                   degree=2)
-fit <- svm(V58 ~ ., data = spam.train,
-           kernel = k,
-           degree=params$best.parameter[[1]],
-           cost=params$best.parameter[[4]],
-           coef0=params$best.parameter[[3]], 
-           gamma=params$best.parameter[[2]])
-#summary(fit)
-pred <- predict(fit, newdata = spam.test)
-table(spam.test$V58, pred)/length(pred)
-
-
-####### polynomial
-print(type[4])
-# tune 
-params <- tune.svm(V58 ~ ., data=spam.train, 
-                   cost=10, 
-                   gamma=0.5, 
-                   coef0=0.0,
-                   degree=2)
-fit <- svm(V58 ~ ., data = spam.train,
-           kernel = k,
-           degree=params$best.parameter[[1]],
-           cost=params$best.parameter[[4]],
-           coef0=params$best.parameter[[3]], 
-           gamma=params$best.parameter[[2]])
-#summary(fit)
-pred <- predict(fit, newdata = spam.test)
-table(spam.test$V58, pred)/length(pred)
-
+for(k in type){
+  print(k)
+  fit <- svm(V58 ~ ., data = spam.train,
+             kernel = k,
+             degree=params$best.parameter[[1]],
+             cost=params$best.parameter[[4]],
+             coef0=params$best.parameter[[3]], 
+             gamma=params$best.parameter[[2]])
+  #summary(fit)
+  pred <- predict(fit, newdata = spam.test)
+  table(spam.test$V58, pred)/length(pred)
+}
 ```
 ### (c) 
+
 **Compare the accuracyyouhaveobtainedheretotheaccuracyyouobtainedonHomework 8 while using random forests**
 
-We see that based on the confusion matrix, 
-
+We see that based on the confusion matrix of each type, the 
 
 ## Q3. 
 
@@ -169,7 +118,7 @@ propriate covariates, why is the kernel trick in SVMs useful?**
 
 **Should we set C large or small if we want our estimated boundary to have the minimum possible variance?**
 
-The parameter C
+If the parameter C is large, then any wrong classification is penalized a lot. This would lead to higher variance since the classification boundary tries to eliminate every single outlier. Thus to have smaller variance we should set C to be small.
 
 ## Q5
 
