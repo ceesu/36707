@@ -133,16 +133,16 @@ plot(x1, x2, col = as.factor(y))
 ##### c) Fit a logistic regression model to the data, using X1 and X2 as predictors.
 
 ```{r}
-model <- glm(y ~x1 + x2,family=binomial(link='logit'))
-summary(model)
+mod <- glm(y ~x1 + x2,family=binomial(link='logit'))
+#summary(model)
 ```
 
 
 ##### d) Apply this model to the training data in order to obtain a pre- dicted class label for each training observation. Plot the ob- servations, colored according to the predicted class labels. The decision boundary should be linear.
 
 ```{r}
-pred_y <- predict.glm(model, type="response")
-plot(x1, x2, col = as.factor(pred_y>0.5))
+p <- predict(mod, type="response")
+plot(x1, x2, col = as.factor(p>0.5))
 ```
 
 
@@ -163,7 +163,7 @@ plot(x1, x2, col = as.factor(pred_y>0.5))
 ##### g) Fit a support vector classifier to the data with X1 and X2 as predictors. Obtain a class prediction for each training observa- tion. Plot the observations, colored according to the predicted class labels.
 
 ```{r}
-fit <- svm(y ~x1 + x2, data = spam.train,kernel = "linear")
+fit <- svm(y ~x1 + x2,kernel = "linear")
 pred <- predict(fit)
 plot(x1, x2, col = as.factor(pred>0.5))
 ```
@@ -221,14 +221,14 @@ simulate <- function(fraction) {
 new <- simulate(0.5)
 new_test <- simulate(0.5)
 # run SVM
-fit <- svm(Y ~X1+X2, data = new,
-           kernel = "radial")
-pred <- predict(fit)
+fit <- svm(Y ~X1+X2, data = new, probability = TRUE)
+pred <- predict(fit, newdata = new_test)
+table(new$Y, pred)/length(pred)
 
 # run LR
-model <- glm(Y ~X1+X2,family=binomial(link='logit'))
-t <- table(spam.test$V58, pred)/length(pred)
-  print(kable(t))
+model <- glm(Y ~X1+X2,  data = new,family=binomial(link='logit'))
+pred <- predict.glm(model, newdata = new_test)
+table(new$Y, pred)/length(pred)
 ```
 
 ### b)
@@ -237,7 +237,7 @@ t <- table(spam.test$V58, pred)/length(pred)
 
 ```{r}
 frac <- seq(0.6, 0.95, length.out= 5)
-errors <- 
+
 for(f in frac){
   new <- simulate(fraction = f)
   fit <- svm(Y ~X1+X2, data = new,
