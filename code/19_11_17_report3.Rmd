@@ -1,0 +1,210 @@
+---
+title: "Health exams in Vietnam Data Analysis Report"
+author: "Cathy Su"
+date: "19/11/2019"
+output:
+  pdf_document: default
+  html_document:
+    fig_caption: yes
+    highlight: tango
+bibliography: report3.bib
+---
+
+```{r setup, include=FALSE}
+#http://rosmarus.refsmmat.com/datasets/datasets/vietnam-health/
+
+# libraries
+library(AER)
+library(stargazer)
+library(tidyverse)
+library(lattice)
+library(dagitty)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library("ggpubr")
+library(knitr)
+library(bestglm)
+
+opts_knit$set(eval.after = 'fig.cap')
+knitr::opts_chunk$set(echo = FALSE, width.cutoff=60, fig.pos = 'H')
+set.seed(1234)
+
+mod_stargazer <- function(...){
+  output <- capture.output(stargazer(...))
+  # The first three lines are the ones we want to remove...
+  output <- output[4:length(output)]
+  # cat out the results - this is essentially just what stargazer does too
+  cat(paste(output, collapse = "\n"), "\n")
+}
+
+# data
+data <- read.csv("../data/sfn-sample.csv",
+                     sep = ",", 
+                    header = T)
+
+####### NEW VARIABLES
+# early year
+data$startdate <- as.numeric(as.POSIXct(data$startdate)) - 10^9
+data$startdate <- data$startdate/max(data$startdate)
+
+# topics
+table <- read.csv("../data/forum_id.csv",
+                     sep = ",", 
+                     header = T)
+# add a NA level to the table.
+
+topics <- separate_rows(table, Forum.IDs, sep = ",")
+topics$Forum.IDs <- as.numeric(topics$Forum.IDs)
+setdiff(topics$Forum.IDs, data$forum_id)
+data$category <- plyr::mapvalues(data$forum_id,
+                              from = topics$Forum.IDs,
+                              to = as.character(topics$Category)) 
+data$category <- as.factor(data$category)
+levels(data$category)[1:32] <- NA
+#test <- lapply(data$category, function(x) as.character(as.numeric(x)))
+# proportion_deleted
+data$proportion_deleted <- data$deleted_posts/data$posts
+data$post_rate <- 0
+data$post_rate[data$duration > 0]<- data$posts[data$duration > 0]/(data$duration[data$duration > 0]) # if the denom is zero, set post rate to zero
+
+# posts per unique author
+data$posts_per_author <- data$posts/data$authors
+
+
+# > colnames(data)
+#  [1] "tid"                "state"              "posts"              "views"             
+#  [5] "duration"           "startdate"          "forum_id"           "authors"           
+#  [9] "deleted_posts"      "not_deleted"        "pinned"             "author_exp"        
+# [13] "author_banned"      "year_started"       "topic"              "proportion_deleted"
+# [17] "post_rate"
+
+
+####### CLEANED DATA
+dat <- data[data$pinned ==0 & !is.na(data$category) & data$posts <500,]
+#& data$views >0
+dat$category <- as.factor(dat$category)
+dat$author_banned <- as.factor(dat$author_banned)
+
+
+##### Changes made
+# * expand executive summary to 1 page
+# * removed more outliers to address the fit given in Figure 3. 
+# * explain dispersion test
+# * formatting: remove R code and text running into margins
+# * add more explanations of figures
+
+```
+
+## Executive Summary
+
+Medical care for serious diseases can be very expensive, and in countries without estab-
+lished socialized medical systems it can impose serious hardships on patients. Ideally,
+
+patients would get regular check-ups (or “general health examinations,” GHEs) so that
+
+serious conditions could be detected and treated early, before they cause serious prob-
+lems. This would save money and improve public health.
+
+However, there are many possible obstacles to getting everyone to go to regular check-
+ups. They might be too expensive, or too difficult to schedule; some people may not trust
+
+doctors or believe that check-ups have any value; or some people may have had bad expe-
+riences when they previously tried to get check-ups.
+
+Public health researchers in Vietnam wanted to explore these reasons and determine
+
+what obstacles prevented widespread use of regular check-ups. They conducted an inter-
+view survey in Hanoi and Hung Yen, Vietnam, by traveling to “secondary schools, hospi-
+tals, companies, government agencies and randomly selected households in Hanoi” and
+
+interviewing people in person for about 10–15 minutes. This dataset contains the raw data
+from that survey, totaling 2,068 valid responses.
+
+
+## Introduction
+
+Moderators at online forums are always interested in growing the participation while keeping a high quality discussion, but it's unclear what they should pay attention to when making this decision. Here we examine which topics on an online science forum, ScienceForums.Net, are at greatest risk of needing to be closed. This dataset represents a relevant scenario where moderators needed to make decisions on closing topics based upon our covariates of interest including author profile, author diversity, and subject matter of posts. We processed the data from its original format as taken from teh Nifty Datasets database which contains 12 predictors and 9021 topics of interest spread across 13 subforums such as "Speculations" and "Medicine". We believed that author diversity, author experience and subforum category are most important to determine number of posts, number of views and closed or open status of topics. Due to the nature of the count data and binary response variables we used generalized linear models to find the important explanatory variables behind the status of topics. We found important covariates by comparison of models with chi squared test and checked their predictive ability by using best subsets regression.
+
+## Methods
+
+### Removal of outliers and missing data
+
+
+
+### Calculation of additional variables 
+
+
+## Exploratory Data Analysis 
+
+### Causal diagram 
+
+We may hypothesize that topics will need to be closed mainly due to offensive posts, or due to controversial discussion. Based on this, author diversity ('authors') could be important to affect the relationship between proportion of deleted posts, length of the discussion and topic status (open or closed) as in Figure \ref{fig:cause}. 
+
+```{r causal, fig.width=6, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships of experimental variables involved in relationship between proportion of deleted posts and topic status."}
+#pinned [pos="-1,1.5"]
+# author_exp  [pos="-1,2.0"]
+# startdate [pos="1.2,0"]
+# views [pos="2,2"]
+# topic_category [pos="2,0.5"]
+#  
+g <- dagitty('dag {
+    state [pos="0,1"]
+    authors [pos="1,0.5"]
+    proportion_deleted [pos="1,1"]
+    topic_category [pos="2,0.5"]
+    views [pos="2,1"]
+    posts [pos="2,0.75"]
+    startdate [pos="0,0.5"]
+    
+    startdate ->posts <- topic_category -> authors-> posts-> state
+    posts ->views <-startdate
+    proportion_deleted -> state
+    authors -> proportion_deleted 
+    authors -> views
+    authors -> state
+topic_category-> state
+}')
+
+plot(g)
+```
+
+### Univariate variable distributions
+
+Figure \ref{fig:uni} shows the distribution of topics which fall into each category for the binary variables. This shows us that almost no topics are deleted from view or pinned. However a small portion of topics (<10%) are closed, or started by a banned author.
+
+## Introduction
+
+## Q1. 
+
+Overall, how do people rate the attractiveness, impressiveness, sufficiency, and pop-
+ularity of information they receive in checkups? Give us some summaries of these
+
+variables, as well as variables like assurance, reliability, and empathy that tell us how
+well our doctors and nurses are doing, so we know how to improve.
+
+## Q2. 
+
+What factors make a person less likely to get check-up every twelve months? Find
+the most important factors that could help us design our advertising, and give us
+some measure of how important they are.
+
+
+## Q3. 
+
+**Can we predict which people would be easiest to convince? That is, some people
+might be on the edge, and would get an exam with a little extra push; some people
+are very determined and would not get an exam no matter how hard you try. Using
+a classifier, can you find the patients who haven’t gotten an exam but are most like
+other patients who have? Be sure to tell us how well your classifier works, so we
+know whether this is reliable.**
+
+In this case:
+
+The intercept= -9.79394 which is interpreted as the log odds of a student with a math score of zero being in an honors class.
+
+The coefficient for math= 0.15634 which is interpreted as the expected change in log odds for a one-unit increase in the math score. The odds ratio can be calculated by exponentiating this value to get 1.16922 which means we expect to see about 17% increase in the odds of being in an honors class, for a one-unit increase in math score
+
+## Conclusion
+
+## Bibliography
