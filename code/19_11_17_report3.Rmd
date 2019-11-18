@@ -124,16 +124,17 @@ We also looked for outliers in the data among the remaining variables. Only the 
 
 We may hypothesize that the respondent's general health is inversely related to their incidence of disease. Furthermore their perceptions of GHEs may be approximately correlated with what value they have derived from the procedures in improving their health. Lastly the number of GHEs brings up the cost of healthcare. 
 
-```{r causal, fig.width=6, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
+```{r causal, fig.width=2, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
 
 g <- dagitty('dag {
-    health [pos="0,1"]
-    disease [pos="1,0.5"]
+    health [pos="0,0.75"]
+    incidence_disease [pos="1,0.5"]
     perception_of_GHE [pos="1,1"]
-     [pos="2,0.5"]
-    
-    startdate ->posts <- topic_category -> authors-> posts-> state
-    posts ->views <-startdate
+    frequency_of_GHE [pos="0.5,0.75"]
+    health_insurance [pos="0,0.5"]
+    health -> incidence_disease
+    health_insurance -> frequency_of_GHE<-health 
+    frequency_of_GHE -> perception_of_GHE
 }')
 
 plot(g)
@@ -158,7 +159,7 @@ boxplot(data$height)
 ```
 
 
-```{r trim, fig.width=5, fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:trim} Distributions of important demographic variables show outliers in the raw data."}
+```{r trim, fig.width=5, fig.height=3, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:trim} A-C) Distributions of important demographic variables in the raw data show outliers. We trimmed the outliers in the date, age and BMI. D) We can also see BMI is perfectly calculated from height and weight."}
 theme_hw <- theme(plot.title = element_text(hjust = 0.5),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank()
@@ -182,7 +183,7 @@ plot_grid(p3, p2,p4,p1,
 
 ### Pairwise distributions
 
-We wanted to know how the various ratings in the survey correlated. Therefore we checked the correlation among the numeric variables of the cleaned dataset in Figure \ref{fig:pairs}. This shows that age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information). 
+We wanted to know how the various ratings in the survey correlated. Therefore we checked the correlation among the numeric variables of the cleaned dataset in Figure \ref{fig:pairs}. We see that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information). 
 
 ```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs} Pairwise correlations of numeric variables including their Pearson correlation coefficient."}
 # check relationships of all variables of interest
@@ -204,10 +205,11 @@ chart.Correlation(dat[vars], pch=19)
 
 **Overall, how do people rate the attractiveness, impressiveness, sufficiency, and popularity of information they receive in checkups? Give us some summaries of these variables, as well as variables like assurance, reliability, and empathy that tell us how well our doctors and nurses are doing, so we know how to improve.**
 
-The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the attractiveness (AttractInfo), impressiveness (ImpressInfo), sufficiency (SuffInfo), and popularity (PopularInfo) of information they recieve. The average rating about the type of information recieved in GHEs is significantly correlated and tends to score a 3 on the 5-point scale. There is also clustering of the ratings of the GHE equipment and staff which includes the tangibles (Tangibles), assurance (Assurance), reliability (Reliability), responsibility (Respon), and empathy (Empathy). These ratings are higher on average.
+The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the attractiveness (AttractInfo), impressiveness (ImpressInfo), sufficiency (SuffInfo), and popularity (PopularInfo) of information they recieve. The average rating about the type of information recieved in GHEs is significantly correlated and tends to score a 3 on the 5-point scale. There is also clustering of the ratings of the GHE equipment and staff which includes the tangibles (Tangibles), assurance (Assurance), reliability (Reliability), responsibility (Respon), and empathy (Empathy). These ratings are higher on average. 
+We performed a 
 
 ```{r q1, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
-s
+
 mod <- glm(views ~ posts + authors + offset(log(startdate)), 
            family =quasipoisson(log), 
            data = dat)
@@ -219,31 +221,36 @@ plot(mod)
 
 **What factors make a person less likely to get check-up every twelve months? Find the most important factors that could help us design our advertising, and give us some measure of how important they are.**
 
-We performed variable selection to exclude variables those without large effects. We included the interaction terms between diversity score and each of the hormones, which are interpretable interaction terms that we need to consider to answer the substantive questions. 
-First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation and plotted the mean squared error in Figure \ref{fig:cv}. This analysis shows validation error is lowest around 8 terms.
+Here we want to predict the variable RecExam. 
+We performed variable selection among all of the variables available (except the participant id) in order to exclude variables without large effects. First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation and plotted the mean squared error in Figure \ref{fig:cv}. This analysis shows validation error is lowest around 8 terms.
 
 ```{r cv, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:cv} Cross validation error for each number of predictors"}
-
+# http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
 library(leaps)
 set.seed(12)
-folds=sample(rep(1:10,length=nrow(team_dat)))
+folds=sample(rep(1:10,length=nrow(dat)))
 
 predict.regsubsets=function(object,newdata,id,...){
   form=as.formula(object$call[[2]])
   mat=model.matrix(form,newdata)
-  coefi=coef(object,id=id)
+  coefi=coef(object,id=id) # extract the 'top' coefficients according to best subsets
   mat[,names(coefi)]%*%coefi
 }
-
-vars <-c(allvars)
-cv.errors=matrix(NA,10,11)
+vars <- colnames(dat)[2:48]
+cv.errors=matrix(NA,10,length(vars))
+#### ITERATE OVER K FOLDS
 for(k in 1:10){
   # best fit on the train data
-  best.fit=regsubsets(final.performance~. + avg.log.testosterone:diversity.score + diversity.score:avg.log.cortisol, data=team_dat[folds!=k, vars],nvmax=40,method="exhaustive")
-  # performance on the test data
-  for(i in 1:10){
-    pred=predict(best.fit,team_dat[folds==k,vars],id=i)
-    cv.errors[k,i]=mean((team_dat$final.performance[folds==k]-pred)^2)
+  # nvmax is maximum size of subsets to examine
+  # it may take too long to do exhaustive search
+  best.fit=regsubsets(RecPerExam~ ., data=dat[folds!=k, vars],nvmax=length(vars),
+                      method = "forward") 
+  
+  #### ITERATE OVER EACH OF THE I NUMBER OF PREDICTORS
+  for(i in 1:40){
+    # get the fit on 'i' variables
+    pred=predict.regsubsets(best.fit,dat[folds==k,vars], id=i)
+    cv.errors[k,i]=mean((dat$RecExam[folds==k]-pred)^2)
   }
 }
 
