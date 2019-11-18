@@ -25,6 +25,7 @@ library(gridExtra)
 library("ggpubr")
 library(knitr)
 library(bestglm)
+library(cowplot)
 
 opts_knit$set(eval.after = 'fig.cap')
 knitr::opts_chunk$set(echo = FALSE, width.cutoff=60, fig.pos = 'H')
@@ -42,26 +43,43 @@ mod_stargazer <- function(...){
 data <- read.csv("../data/vietnam-health.csv",
                      sep = ",", 
                     header = T)
+
+
 # some should be numeric
-data$height <- as.numeric(data$height)
-data$weight <- as.numeric(data$weight)
-data$BMI <- as.numeric(data$BMI)
-data$Tangibles <- as.numeric(data$Tangibles)
-data$Reliability <- as.numeric(data$Reliability)
-data$Respon<- as.numeric(data$Respon)
-data$Assurance<- as.numeric(data$Assurance)
-data$Empathy<- as.numeric(data$Empathy)
-data[,c(44:47)] <-lapply(data[,c(44:47)], as.numeric)
+data$height <- as.numeric(as.character(data$height))
+data$weight <- as.numeric(as.character(data$weight))
+data$BMI <- as.numeric(gsub(",","\\.",data$BMI))
+# data$Tangibles <- as.numeric(data$Tangibles)
+# data$Reliability <- as.numeric(data$Reliability)
+# data$Respon<- as.numeric(data$Respon)
+# data$Assurance<- as.numeric(data$Assurance)
+# data$Empathy<- as.numeric(data$Empathy)
+
+# PROPER CONVERSION OF THE RATINGS
+data[,c(33:37,44:47)] <-lapply(data[,c(33:37,44:47)], as.character)
+data[,c(33:37,44:47)] <-lapply(data[,c(33:37,44:47)], as.numeric)
+
+#test <- data$BMI/(data$weight/((data$height/100)^2))
+head(data[!complete.cases(data),])
+colnames(data)[colSums(is.na(data)) > 0]
+# > colnames(data)[colSums(is.na(data)) > 0]
+#  [1] "height"      "weight"      "Tangibles"   "Reliability" "Respon"      "Assurance"  
+#  [7] "Empathy"     "SuffInfo"    "AttractInfo" "ImpressInfo" "PopularInfo"
 
 # trim BMI
-test <- data$BMI/(data$weight/((data$height/100)^2))
 
-####### NEW VARIABLES
+####### GROUP THE VARIABLES
+
 summary(data)
 
 ####### CLEANED DATA
-
-dat <- data %>% select(-c(height, weight, id, Jobstt, SuitExer))
+dat <- data %>% select(-c(height, weight)) %>% 
+  filter(between(date, 20160810, 20161031)) %>% 
+  filter(between(BMI, 0, 35)) %>%
+  filter(between(Age, 0, 50)) 
+demo_vars <- colnames(dat)[c(2:8,47)]
+health_vars <- colnames(dat)[c(9:12,21:28,45:46)]
+check_vars <- colnames(dat)[c(13:20, 29:44)]
 
 
 ```
@@ -98,29 +116,21 @@ The dataset includes three categories of variables about the participants. The f
 
 ### Removal of outliers and missing data
 
-We discarded the following variables:
-* Jobstt: the job status response categories were uninformative (stable, unstable, student, retired, homemaker, or other). In particular, it's hard to even tell if the respondent is employed.
-* height and weight: these two can be inferred from BMI. Outliers discussed in EDA were thrown out.
-* SuitExer: half of the respondents answered "unknown" for this question, and for the portion that had an answer, no units were given.
+After importing the data, we found there was 90 cases with missing data out of the 2068 participants. The variables with missing data included numeric variables only: height, weight and the ratings of GHEs e.g. percieved timeliness of the checkup. We first discarded height and weight since these two correspond fully to BMI (see EDA). There seemed to be a possibility that these were informative missing data, since the participants had answered everything else.
 
-### Calculation of additional variables 
-
+We also looked for outliers in the data among the remaining variables. Only the Age and BMI directly inform us about the patient's health so outliers in these variables are very important. Additionally, we removed outliers in the date to restrict participants from September to October 2016. This left 1941 responses.  
 
 ## Exploratory Data Analysis 
 
-In terms of demographics, data were all collected in 2016 from participants from 13 to 83 years of age. 
-
-### Causal diagram 
-
-We may hypothesize that the respondent's general health is inversely related to their incidence of disease. Furthermore their perceptions of GHEs may be approximately correlated with what value they have derived from the procedures in improving their health. Lastly the number of GHEs brings up the cost of healthcare. Therefore, we may believe that if the respondent 
+We may hypothesize that the respondent's general health is inversely related to their incidence of disease. Furthermore their perceptions of GHEs may be approximately correlated with what value they have derived from the procedures in improving their health. Lastly the number of GHEs brings up the cost of healthcare. 
 
 ```{r causal, fig.width=6, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
 
 g <- dagitty('dag {
-    state [pos="0,1"]
-    authors [pos="1,0.5"]
-    proportion_deleted [pos="1,1"]
-    topic_category [pos="2,0.5"]
+    health [pos="0,1"]
+    disease [pos="1,0.5"]
+    perception_of_GHE [pos="1,1"]
+     [pos="2,0.5"]
     
     startdate ->posts <- topic_category -> authors-> posts-> state
     posts ->views <-startdate
@@ -130,18 +140,27 @@ plot(g)
 ```
 
 ### Univariate variable distributions
+Data were collected in 2016 from participants from 13 to 83 years of age, on 31 separate dates in the year 2016. As seen in Figure \ref{fig:trim} A-C, there are outlier values in the variables date, age and BMI. There are outlier dates in Figure \ref{fig:trim} A which may be typos and fall outside of real dates e.g. '20169828'. Therefore we trimmed the few outlier dates which fall outside of September and October 2016.  For age and BMI, we can see in Figure \ref{fig:trim}B-C that the data are upward skewed by a few outliers. We therefore removed data with age greater than 50 and BMI greater than 35.
 
-We found outliers in the following variables which were removed.
-* BMI is calculated as weight (kg) / [height (m)]^2. However when we calculated the BMI from the height and weight we found that the quantities were not always linearly related.
+BMI is an important indication of fitness and calculated as weight (kg) / [height (m)]^2. When we calculated the BMI from the height and weight we found that the quantities corresponded exactly, as seen in Figure \ref{fig:trim} D. Therefore since BMI is more indicative of health, we discarded height and weight variables.
 
-We found that there was a missing r for the following variables:
+```{r bmi, include=FALSE, fig.width=5, fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:bmi} BMI corresponds to height and weight."}
+test <- data$BMI/(data$weight/((data$height/100)^2))
+outs <- data[test > 1.2,] #NA
+outs <- data[test < 0.5,]
+p1 <-ggplot(data, aes(x= BMI, y = weight/((height/100.0)**2)))+
+  geom_point()s
+p4 <-ggplot(data, aes(y= BMI))+
+  geom_boxplot() +theme_hw
+boxplot(test)
+summary(test)
+boxplot(data$height)
+```
 
-* RecExam, RecPerExam: Time since the respondent last visited a doctor with symptoms of a disease or for a check-up.
-* CHPerc: Respondent's general opinion of public health. This included 260 'unknown' responses. 
 
-```{r}
+```{r trim, fig.width=5, fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:trim} Distributions of important demographic variables show outliers in the raw data."}
 theme_hw <- theme(plot.title = element_text(hjust = 0.5),
-        #axis.text.x=element_blank(),
+        axis.text.x=element_blank(),
         axis.ticks.x=element_blank()
        # panel.grid.major =   element_line(colour = "gray",size=0.5)
   )
@@ -149,21 +168,21 @@ theme_hw <- theme(plot.title = element_text(hjust = 0.5),
 p1 <-ggplot(data, aes(x= BMI, y = weight/((height/100.0)**2)))+
   geom_point()#+theme_hw #+ ylab("Testosterone in pg/mL")
 # boxplot(test)
-p2 <-ggplot(data, aes(y=as.numeric(SuitExer)))+
-  geom_boxplot()#+ ylab("Log(Testosterone in pg/mL)")
-p3 <-ggplot(data, aes(x=as.factor(pinned)))+
-  geom_bar()+theme_hw #+ ylab("Cortisol in nMol/L")
-p4 <-ggplot(data, aes(x=as.factor(author_banned)))+
-  geom_bar()+theme_hw #+ ylab("Log(cortisol in nMol/L)")
+p2 <-ggplot(data, aes(y=Age))+
+  geom_boxplot() +theme_hw#+ ylab("Log(Testosterone in pg/mL)")
+p3 <-ggplot(data, aes(y=date))+
+  geom_boxplot() +theme_hw#+ ylab("Cortisol in nMol/L")
+p4 <-ggplot(data, aes(y= BMI))+
+  geom_boxplot() +theme_hw
 # summary(test)
-grid.arrange(p1, 
-             ncol = 4)
+plot_grid(p3, p2,p4,p1,  
+             nrow=1, labels = c('A', 'B', 'C', 'D'), label_size = 12)
 
 ```
 
 ### Pairwise distributions
 
-We checked the corrrelation among the numeric variables in Figure \ref{fig:pairs}. 
+We wanted to know how the various ratings in the survey correlated. Therefore we checked the correlation among the numeric variables of the cleaned dataset in Figure \ref{fig:pairs}. This shows that age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information). 
 
 ```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs} Pairwise correlations of numeric variables including their Pearson correlation coefficient."}
 # check relationships of all variables of interest
@@ -183,17 +202,12 @@ chart.Correlation(dat[vars], pch=19)
 
 ## Q1. 
 
-Overall, how do people rate the attractiveness, impressiveness, sufficiency, and pop-
-ularity of information they receive in checkups? Give us some summaries of these variables, as well as variables like assurance, reliability, and empathy that tell us how well our doctors and nurses are doing, so we know how to improve.
+**Overall, how do people rate the attractiveness, impressiveness, sufficiency, and popularity of information they receive in checkups? Give us some summaries of these variables, as well as variables like assurance, reliability, and empathy that tell us how well our doctors and nurses are doing, so we know how to improve.**
+
+The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the attractiveness (AttractInfo), impressiveness (ImpressInfo), sufficiency (SuffInfo), and popularity (PopularInfo) of information they recieve. The average rating about the type of information recieved in GHEs is significantly correlated and tends to score a 3 on the 5-point scale. There is also clustering of the ratings of the GHE equipment and staff which includes the tangibles (Tangibles), assurance (Assurance), reliability (Reliability), responsibility (Respon), and empathy (Empathy). These ratings are higher on average.
 
 ```{r q1, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
-# > which(rownames(dat) == 8346,)
-# [1] 7519
-
-#temp <- dat[-7519,]
-# mod <- glm(views ~ posts + offset(log(startdate)), 
-#            family =quasipoisson(log), 
-#            data = dat)
+s
 mod <- glm(views ~ posts + authors + offset(log(startdate)), 
            family =quasipoisson(log), 
            data = dat)
@@ -203,13 +217,9 @@ plot(mod)
 
 ## Q2. 
 
-What factors make a person less likely to get check-up every twelve months? Find
-the most important factors that could help us design our advertising, and give us
-some measure of how important they are.
+**What factors make a person less likely to get check-up every twelve months? Find the most important factors that could help us design our advertising, and give us some measure of how important they are.**
 
-### Selecting the variables with non-negligible effect
-
-Out of the variables that we had considered in Figure \ref{fig:pairs}, to build models we first performed variable selection to exclude those without large effects. We included the interaction terms between diversity score and each of the hormones, which are interpretable interaction terms that we need to consider to answer the substantive questions. 
+We performed variable selection to exclude variables those without large effects. We included the interaction terms between diversity score and each of the hormones, which are interpretable interaction terms that we need to consider to answer the substantive questions. 
 First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation and plotted the mean squared error in Figure \ref{fig:cv}. This analysis shows validation error is lowest around 8 terms.
 
 ```{r cv, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:cv} Cross validation error for each number of predictors"}
@@ -252,12 +262,7 @@ points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
 
 ## Q3. 
 
-**Can we predict which people would be easiest to convince? That is, some people
-might be on the edge, and would get an exam with a little extra push; some people
-are very determined and would not get an exam no matter how hard you try. Using
-a classifier, can you find the patients who haven’t gotten an exam but are most like
-other patients who have? Be sure to tell us how well your classifier works, so we
-know whether this is reliable.**
+**Can we predict which people would be easiest to convince? That is, some people might be on the edge, and would get an exam with a little extra push; some people are very determined and would not get an exam no matter how hard you try. Using a classifier, can you find the patients who haven’t gotten an exam but are most like other patients who have? Be sure to tell us how well your classifier works, so we know whether this is reliable.**
 
 In this case:
 
