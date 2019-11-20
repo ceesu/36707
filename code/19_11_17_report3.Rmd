@@ -1,6 +1,6 @@
 ---
 title: "Health exams in Vietnam Data Analysis Report"
-author: "Cathy Su"
+author: "Qiao Su"
 date: "19/11/2019"
 output:
   pdf_document: default
@@ -56,8 +56,9 @@ data$BMI <- as.numeric(gsub(",","\\.",data$BMI))
 # data$Empathy<- as.numeric(data$Empathy)
 
 # PROPER CONVERSION OF THE RATINGS
-data[,c(33:37,44:47)] <-lapply(data[,c(33:37,44:47)], as.character)
-data[,c(33:37,44:47)] <-lapply(data[,c(33:37,44:47)], as.numeric)
+data[,c(33:37,44:48)] <-lapply(data[,c(33:37,44:48)], as.character)
+data[,c(33:37,44:48)] <-lapply(data[,c(33:37,44:48)], as.numeric)
+data[,c(12:18)]<-lapply(data[,c(12:18)], as.factor)
 
 #test <- data$BMI/(data$weight/((data$height/100)^2))
 head(data[!complete.cases(data),])
@@ -69,7 +70,6 @@ colnames(data)[colSums(is.na(data)) > 0]
 # trim BMI
 
 ####### GROUP THE VARIABLES
-
 summary(data)
 
 ####### CLEANED DATA
@@ -105,6 +105,12 @@ tals, companies, government agencies and randomly selected households in Hanoi�
 interviewing people in person for about 10–15 minutes. This dataset contains the raw data
 from that survey, totaling 2,068 valid responses.
 
+Table 2 describes some of the categorical variables in the dataset. Over half the sample (n= 1,059, 51.21%) had had a GHE less than a year ago. One of the most common reasons given for hesitating to have a GHE was that they are waste of time; nearly 52% of participants who were reluctant to attend GHEs mentioned this as a reason. Amongst those who were prepared to attend GHEs, the main reason given
+
+If they experienced symptoms of ill-health the majority of participants would choose to go to a clinic
+(43.04%). Most respondents (86.32%) believed that a GHE should cost less than 2 million VND, indicating that reasonable pricing is a big concern for people in relation to periodic GHEs
+
+If a healthcare app indicated symptoms of disease then 39.41% of participants would be willing to have a GHE.
 
 ## Introduction
 
@@ -116,7 +122,7 @@ The dataset includes three categories of variables about the participants. The f
 
 ### Removal of outliers and missing data
 
-After importing the data, we found there was 90 cases with missing data out of the 2068 participants. The variables with missing data included numeric variables only: height, weight and the ratings of GHEs e.g. percieved timeliness of the checkup. We first discarded height and weight since these two correspond fully to BMI (see EDA). There seemed to be a possibility that these were informative missing data, since the participants had answered everything else.
+After importing the data, we found there was 90 cases with missing data out of the 2068 participants. The variables with missing data included numeric variables only: height, weight and the ratings of GHEs e.g. percieved timeliness of the checkup. We first discarded height and weight since these two correspond fully to BMI (see EDA). There seemed to be a possibility that the remainder missing cases were informative missing data, since the participants had answered everything else. Therefore we kept the other observations that had missing data.
 
 We also looked for outliers in the data among the remaining variables. Only the Age and BMI directly inform us about the patient's health so outliers in these variables are very important. Additionally, we removed outliers in the date to restrict participants from September to October 2016. This left 1941 responses.  
 
@@ -124,7 +130,7 @@ We also looked for outliers in the data among the remaining variables. Only the 
 
 We may hypothesize that the respondent's general health is inversely related to their incidence of disease. Furthermore their perceptions of GHEs may be approximately correlated with what value they have derived from the procedures in improving their health. Lastly the number of GHEs brings up the cost of healthcare. 
 
-```{r causal, fig.width=2, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
+```{r causal, fig.width=4, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
 
 g <- dagitty('dag {
     health [pos="0,0.75"]
@@ -150,9 +156,9 @@ test <- data$BMI/(data$weight/((data$height/100)^2))
 outs <- data[test > 1.2,] #NA
 outs <- data[test < 0.5,]
 p1 <-ggplot(data, aes(x= BMI, y = weight/((height/100.0)**2)))+
-  geom_point()s
+  geom_point()
 p4 <-ggplot(data, aes(y= BMI))+
-  geom_boxplot() +theme_hw
+  geom_boxplot() #+theme_hw
 boxplot(test)
 summary(test)
 boxplot(data$height)
@@ -183,7 +189,7 @@ plot_grid(p3, p2,p4,p1,
 
 ### Pairwise distributions
 
-We wanted to know how the various ratings in the survey correlated. Therefore we checked the correlation among the numeric variables of the cleaned dataset in Figure \ref{fig:pairs}. We see that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information). 
+We checked the correlation among the numeric variables of the filtered dataset in Figure \ref{fig:pairs}. We observed that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information). 
 
 ```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs} Pairwise correlations of numeric variables including their Pearson correlation coefficient."}
 # check relationships of all variables of interest
@@ -205,8 +211,8 @@ chart.Correlation(dat[vars], pch=19)
 
 **Overall, how do people rate the attractiveness, impressiveness, sufficiency, and popularity of information they receive in checkups? Give us some summaries of these variables, as well as variables like assurance, reliability, and empathy that tell us how well our doctors and nurses are doing, so we know how to improve.**
 
-The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the attractiveness (AttractInfo), impressiveness (ImpressInfo), sufficiency (SuffInfo), and popularity (PopularInfo) of information they recieve. The average rating about the type of information recieved in GHEs is significantly correlated and tends to score a 3 on the 5-point scale. There is also clustering of the ratings of the GHE equipment and staff which includes the tangibles (Tangibles), assurance (Assurance), reliability (Reliability), responsibility (Respon), and empathy (Empathy). These ratings are higher on average. 
-We performed a 
+The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the attractiveness (AttractInfo), impressiveness (ImpressInfo), sufficiency (SuffInfo), and popularity (PopularInfo) of information they recieve. The average rating about the type of information recieved in GHEs is significantly correlated and tends to score a 3 on the 5-point scale. There is also clustering of the ratings giving perceptions of the quality of periodic GHE sessions which includes the tangibles (Tangibles), assurance (Assurance), reliability (Reliability), responsibility (Respon), and empathy (Empathy) variables. These ratings are higher on average. 
+
 
 ```{r q1, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
 
@@ -221,14 +227,19 @@ plot(mod)
 
 **What factors make a person less likely to get check-up every twelve months? Find the most important factors that could help us design our advertising, and give us some measure of how important they are.**
 
-Here we want to predict the variable RecExam. 
-We performed variable selection among all of the variables available (except the participant id) in order to exclude variables without large effects. First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation and plotted the mean squared error in Figure \ref{fig:cv}. This analysis shows validation error is lowest around 8 terms.
+Here we want to predict the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels, among them is 'unknown'. We first trimmed the cases that are unknown leaving 1467 cases. Since the response variable is not continuous we used a binomial glm to model. 
+
+We performed variable selection among all of the variables available (except the participant id) in order to exclude variables without large effects. First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation with best subsets regression and plotted the mean squared error in Figure \ref{fig:cv}. We used the bestglm package to help fit the glm to the training data. This analysis shows validation error is lowest around 8 terms.
+
+Next we fit the model to RecPerExam with the top XXX variables. 
 
 ```{r cv, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:cv} Cross validation error for each number of predictors"}
 # http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
+
+dat_q2 <- dat %>% filter(RecPerExam != "unknow") %>% droplevels()
 library(leaps)
 set.seed(12)
-folds=sample(rep(1:10,length=nrow(dat)))
+folds=sample(rep(1:10,length=nrow(dat_q2)))
 
 predict.regsubsets=function(object,newdata,id,...){
   form=as.formula(object$call[[2]])
@@ -236,21 +247,29 @@ predict.regsubsets=function(object,newdata,id,...){
   coefi=coef(object,id=id) # extract the 'top' coefficients according to best subsets
   mat[,names(coefi)]%*%coefi
 }
-vars <- colnames(dat)[2:48]
+
+vars <- colnames(dat_q2)[2:48]
 cv.errors=matrix(NA,10,length(vars))
 #### ITERATE OVER K FOLDS
 for(k in 1:10){
   # best fit on the train data
   # nvmax is maximum size of subsets to examine
   # it may take too long to do exhaustive search
-  best.fit=regsubsets(RecPerExam~ ., data=dat[folds!=k, vars],nvmax=length(vars),
+  best.fit=regsubsets(RecPerExam ~ ., data=dat_q2[folds!=k, vars],nvmax=length(vars),
                       method = "forward") 
+                      #method = "exhaustive") 
   
   #### ITERATE OVER EACH OF THE I NUMBER OF PREDICTORS
   for(i in 1:40){
+    lbw.for.bestglm <-
+    bestglm(Xy = lbw.for.bestglm,
+            family = gaussian,
+            IC = "AIC",                 
+            method = "exhaustive")
     # get the fit on 'i' variables
-    pred=predict.regsubsets(best.fit,dat[folds==k,vars], id=i)
-    cv.errors[k,i]=mean((dat$RecExam[folds==k]-pred)^2)
+    pred=predict.regsubsets(best.fit,dat_q2[folds==k,vars], id=i)
+    cv.errors[k,i]=mean((as.numeric(dat_q2$RecPerExam[folds==k])-pred)^2)
+    
   }
 }
 
@@ -271,13 +290,7 @@ points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
 
 **Can we predict which people would be easiest to convince? That is, some people might be on the edge, and would get an exam with a little extra push; some people are very determined and would not get an exam no matter how hard you try. Using a classifier, can you find the patients who haven’t gotten an exam but are most like other patients who have? Be sure to tell us how well your classifier works, so we know whether this is reliable.**
 
-In this case:
-
-The intercept= -9.79394 which is interpreted as the log odds of a student with a math score of zero being in an honors class.
-
-The coefficient for math= 0.15634 which is interpreted as the expected change in log odds for a one-unit increase in the math score. The odds ratio can be calculated by exponentiating this value to get 1.16922 which means we expect to see about 17% increase in the odds of being in an honors class, for a one-unit increase in math score
-
-
+The variable which best 
 
 ```{r q3, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
 # > which(rownames(dat) == 8346,)

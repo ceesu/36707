@@ -1,0 +1,86 @@
+---
+title: "Survival analysis on LendingClub loans"
+author: "Alex Reinhart"
+date: "11/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The file `loans.csv` contains summary data from LendingClub, a website that helps match people who need personal or business loans to investors who are willing to loan them money. Each row represents a single loan issued in the first quarter of 2016, as well as its current status: whether it is fully paid, still being paid, or in default.
+
+We will use this data to conduct a survival analysis of loans, in terms of the number of months payments are made. Let “failure” mean a loan listed as anything but “current” or “fully paid”. Failure times are the elapsed number of months; for loans that haven’t failed yet, the censoring time is the elapsed number of months, since we haven’t seen the end of the loan term. Many loans are partway through being paid back and haven't failed in the observed window, but are censored instead: we've only observed a few months of them being paid back so far and don't know what will happen next.
+
+(I realize this ignores e.g. borrowers who missed a few payments but then resumed making payments, but we need to simplify somewhere.)
+
+## Setting up a survival analysis
+
+First, we load the data.
+
+```{r}
+library(survival)
+loans = read.csv("loans.csv")
+```
+
+Here's how we code the data and produce the Kaplan-Meier plot.
+
+`Surv` takes two arguments: the time at which we observed the loan, and whether the loan has failed or not at that time. That is, we can call `Surv(elapsed, status)`, where elapsed is a number of months and status is TRUE if the loan has failed and FALSE if it has not yet failed.
+
+```{r}
+loans$survived = !(loans$loan_status == "Fully Paid" | loans$loan_status == "Current")
+s = Surv(loans$elapsed, loans$survived)
+
+plot(survfit(s ~ 1, data=loans), xlab="Months", ylab="Survival")
+```
+
+We fit a Cox proportional hazards model to the data, given the other loan and borrower covariates we have. We use `coxph` to fit a model that takes into account the loan grade, term, interest rate, home ownership, annual income, delinquency, and purpose category (the reason the borrower gave for wanting the loan). Don’t include any interactions.
+
+```{r}
+loan.fit = coxph(s ~ grade + term + int_rate + home_ownership + annual_inc + delinq_2yrs + purpose,
+                 data=loans)
+summary(loan.fit)
+```
+
+A 5% increase in interest rate is related to the hazard being *multiplied* by
+
+```{r}
+exp(coef(loan.fit)["int_rate"] * 5)
+```
+
+But this interpretation is *not* causal; perhaps riskier borrowers are given higher rate loans, rather than higher rates leading to default.
+
+We can get the combination of factors with highest hazard by finding the largest coefficient in each group: grade C, renter, seeking a loan for a vacation.
+
+```{r}
+coef(loan.fit)
+```
+
+We can also predict the expected number of events for each case over its observed time period. That is, if we integrate the hazard for that case up until the time it failed or was censored, how big is that integral, and hence how many events were expected?
+
+```{r}
+expected_events = predict(loan.fit, type="expected")
+```
+
+## Comparing to a logistic classifier
+
+Let's try fitting a logistic regression. Instead of accounting for censoring, we just predict whether or not the loan has failed. We use the same covariates as in the survival model.
+
+Let's plot the probability of failure against the expected number of events from the Cox model. Before we do so:
+
+**Q:** What do you predict the plot will look like? Bear in mind there are loans that are censored early, because haven't watched them for very long yet.
+
+```{r}
+loan.glm = glm(survived ~ grade + term + int_rate + home_ownership + annual_inc + delinq_2yrs + purpose,
+               data=loans, family="binomial")
+event_probability = predict(loan.glm, type="response")
+
+plot(expected_events, event_probability, xlab="Expected events from Cox model", 
+     ylab="Logistic predicted probability")
+```
+
+The Cox predictions are the expected number of events *until censoring*, so for loans censored very early, even very high-risk ones, the prediction has to be small. The logistic model does not take this into account and will predict a high risk.
+
+In other words, when the Cox model predicts a low number of expected events, this includes cases where the loan is low risk (logistic probability small) as well as cases where the loan is high risk but censored very early (logistic probability large). In contrast, when the Cox model predicts a high number of expected events, this corresponds only to the high risk loans.
+
