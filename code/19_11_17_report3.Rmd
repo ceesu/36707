@@ -69,18 +69,16 @@ colnames(data)[colSums(is.na(data)) > 0]
 
 # trim BMI
 
-####### GROUP THE VARIABLES
-summary(data)
+
 
 ####### CLEANED DATA
-dat <- data %>% select(-c(height, weight)) %>% 
+dat <- data %>% dplyr::select(-c(height, weight)) %>% 
   filter(between(date, 20160810, 20161031)) %>% 
   filter(between(BMI, 0, 35)) %>%
   filter(between(Age, 0, 50)) 
 demo_vars <- colnames(dat)[c(2:8,47)]
 health_vars <- colnames(dat)[c(9:12,21:28,45:46)]
 check_vars <- colnames(dat)[c(13:20, 29:44)]
-
 
 ```
 
@@ -122,15 +120,15 @@ The dataset includes three categories of variables about the participants. The f
 
 ### Removal of outliers and missing data
 
-After importing the data, we found there was 90 cases with missing data out of the 2068 participants. The variables with missing data included numeric variables only: height, weight and the ratings of GHEs e.g. percieved timeliness of the checkup. We first discarded height and weight since these two correspond fully to BMI (see EDA). There seemed to be a possibility that the remainder missing cases were informative missing data, since the participants had answered everything else. Therefore we kept the other observations that had missing data.
+After importing the data, we found there was 90 cases with missing data out of the 2068 participants. The variables with missing data included numeric variables only: height, weight and the ratings of GHEs e.g. percieved timeliness of the checkup. We first discarded height and weight since these two correspond fully to BMI (also see EDA). There seemed to be a possibility that the remainder missing cases were informative missing data, since the participants had answered everything else. Therefore we kept the other observations that had missing data.
 
-We also looked for outliers in the data among the remaining variables. Only the Age and BMI directly inform us about the patient's health so outliers in these variables are very important. Additionally, we removed outliers in the date to restrict participants from September to October 2016. This left 1941 responses.  
+We also looked for outliers in the data among the remaining variables. Only the Age and BMI directly inform us about the patient's health so outliers in these variables are very important. Lastly we removed outliers in the date to restrict participants from September to October 2016. This left 1941 responses.  
 
 ## Exploratory Data Analysis 
 
 We may hypothesize that the respondent's general health is inversely related to their incidence of disease. Furthermore their perceptions of GHEs may be approximately correlated with what value they have derived from the procedures in improving their health. Lastly the number of GHEs brings up the cost of healthcare. 
 
-```{r causal, fig.width=4, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
+```{r causal, fig.width=8, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
 
 g <- dagitty('dag {
     health [pos="0,0.75"]
@@ -147,9 +145,10 @@ plot(g)
 ```
 
 ### Univariate variable distributions
-Data were collected in 2016 from participants from 13 to 83 years of age, on 31 separate dates in the year 2016. As seen in Figure \ref{fig:trim} A-C, there are outlier values in the variables date, age and BMI. There are outlier dates in Figure \ref{fig:trim} A which may be typos and fall outside of real dates e.g. '20169828'. Therefore we trimmed the few outlier dates which fall outside of September and October 2016.  For age and BMI, we can see in Figure \ref{fig:trim}B-C that the data are upward skewed by a few outliers. We therefore removed data with age greater than 50 and BMI greater than 35.
 
-BMI is an important indication of fitness and calculated as weight (kg) / [height (m)]^2. When we calculated the BMI from the height and weight we found that the quantities corresponded exactly, as seen in Figure \ref{fig:trim} D. Therefore since BMI is more indicative of health, we discarded height and weight variables.
+Data were collected in 2016 from participants from 13 to 83 years of age, on 31 separate dates in the year 2016. There are outlier dates in Figure \ref{fig:trim} A which may be typos and fall outside of real dates e.g. '20169828'. Therefore we trimmed the few outlier dates which fall outside of September and October 2016. As seen in Figure \ref{fig:trim} B-C, there are also outlier values in the variables age and BMI. We can see that the data are upward skewed by the outliers. We therefore removed data with age greater than 50 and BMI greater than 35.
+
+BMI is an important indication of fitness and calculated as weight (kg) / [height (m)]^2. When we calculated the BMI from the height and weight we found that the quantities corresponded exactly, as seen in Figure \ref{fig:trim} D. Therefore since the information is redundant and BMI is more indicative of health, we discarded height and weight variables.
 
 ```{r bmi, include=FALSE, fig.width=5, fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:bmi} BMI corresponds to height and weight."}
 test <- data$BMI/(data$weight/((data$height/100)^2))
@@ -160,7 +159,7 @@ p1 <-ggplot(data, aes(x= BMI, y = weight/((height/100.0)**2)))+
 p4 <-ggplot(data, aes(y= BMI))+
   geom_boxplot() #+theme_hw
 boxplot(test)
-summary(test)
+#summary(test)
 boxplot(data$height)
 ```
 
@@ -191,7 +190,7 @@ plot_grid(p3, p2,p4,p1,
 
 We checked the correlation among the numeric variables of the filtered dataset in Figure \ref{fig:pairs}. We observed that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information). 
 
-```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs} Pairwise correlations of numeric variables including their Pearson correlation coefficient."}
+```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs} Pairwise correlations of numeric variables including their Pearson correlation coefficient in the top right quadrant.  We observed that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information)."}
 # check relationships of all variables of interest
 #vars <- colnames(data)[c(2:13)]
 #cor(team_dat)
@@ -205,54 +204,84 @@ chart.Correlation(dat[vars], pch=19)
 #ggpairs(data[,quant_vars])
 ```
 
+Based upon this, we constructed scores to represent the rating of the quality and the information respectively by averaging the corresponding variables, which we could use later on to quickly summarize them. We plotted the distribution of these two score variables in Figure \ref{fig:q1}. There were 20 missing cases for the quality score and 2 missing cases for the information score. 
+
 ## Introduction
 
 ## Q1. 
 
 **Overall, how do people rate the attractiveness, impressiveness, sufficiency, and popularity of information they receive in checkups? Give us some summaries of these variables, as well as variables like assurance, reliability, and empathy that tell us how well our doctors and nurses are doing, so we know how to improve.**
 
-In order to summarize how respondents felt about checkups, we first looked at the distibutions of the ratings they gave of the checkups. The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the main rating varaibles. Ratings of the type of information recieved during GHEs include their attractiveness (AttractInfo), impressiveness (ImpressInfo), sufficiency (SuffInfo), and popularity (PopularInfo) of information. These ratings are correlated. There are also ratings of the perception of quality of periodic GHE sessions which includes the tangibles (Tangibles), assurance (Assurance), reliability (Reliability), responsibility (Respon), and empathy (Empathy) variables.
+Figure \ref{fig:q1} A-B shows that overall, about half of respondents believe that checkups are a waste of time or waste of money. In fact about 25%, or 582 out of our 1941 respondents believed both. However we wanted to know what aspects of the checkups are good versus need improvement.
 
-We can see that the average rating about the type of information recieved in GHEs is significantly correlated and tends to score a 3 on the 5-point scale. As well, the 
+In order to summarize how respondents felt about the specific parts of checkups, we first looked at the distibutions of the ratings they gave of the checkups. The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the main rating variables. As noted, these ratings are also significantly correlated and thus we averaged them to make the quality and information scores which are summarized in Figure \ref{fig:q1}. The mean quality score is 3.54/5 and the mean information score is 2.82/5.  
 
+This suggests that the quality of checkups is viewed more favorably than the information given by checkups. Therefore to improve, it may help to start by changing the sufficiency, attractivenness and impressiveness of the information given in check-ups.
 
-```{r q1, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
+```{r q1, fig.width=10, fig.height=4, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Perception of GHEs. A) About 50% of respondent believe check-ups are a waste of time. B) About 40% of respondent believe check-ups are a waste of money. C-D) The mean quality score is 3.54/5 and the mean information score is 2.82/5. "}
 
-# mod <- glm(views ~ posts + authors + offset(log(startdate)), 
-#            family =quasipoisson(log), 
-#            data = dat)
-# par(mfrow=c(2,2))
-# plot(cars)
-plot(1:5)
+####### NEW VARS
+dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
+dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
+
+#dat[!complete.cases(dat$info_score),]
+#dat[!complete.cases(dat$quality_score),]
+
+#mean(dat$quality_score, na.rm = TRUE)
+#mean(dat$info_score, na.rm = TRUE)
+# contingency table
+#cat(table(dat$Wsttime, dat$Wstmon))
+# cat(xtabs(~Wsttime + Wstmon, data=dat))
+#kable(table(dat$Wsttime, dat$Wstmon))
+p1 <- histogram(dat$quality_score, nint=5)
+p2 <- histogram(dat$info_score, nint=5)
+p3 <- histogram(dat$Wsttime, xlab = "Wsttime")
+p4 <- histogram(dat$Wstmon, xlab = "Wstmon")
+# dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
+# dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
+
+#dat[!complete.cases(dat$info_score),]
+#dat[!complete.cases(dat$quality_score),]
+
+plot_grid(p3, p4, p1,p2, 
+          nrow=1, labels = c('A', 'B', 'C', 'D'), label_size = 20)
 ```
-
-
-We were further interested in whether
 
 ## Q2. 
 
 **What factors make a person less likely to get check-up every twelve months? Find the most important factors that could help us design our advertising, and give us some measure of how important they are.**
 
-We aimed to determine what factors make a person less likely to get check-up every twelve months by modelling the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels: less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months, unknown = respondent doesn't know. We first trimmed the cases that are 'unknown' since this is not an informative response, leaving 1467 cases. Since the response variable is composed of discrete events, we used a binomial glm.
+We aimed to determine what factors make a person less likely to get check-up every twelve months by modelling the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels: less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months, unknown = respondent doesn't know. We first trimmed the cases that are 'unknown' since this is not an informative response, leaving 1467 cases. Since the response variable is composed of discrete events, we used a binomial glm. However there is some class imbalance as there are about twice as many cases of less than 12 months than of the other two levels (data not shown). 
 
-We performed best subset variable selection among all of the variables available (except the participant id) in order to exclude variables without large effects in this model. First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation with best subsets regression and plotted the mean squared error in Figure \ref{fig:cv}. We used the bestglm package to perform the cross validation. This analysis shows validation error is lowest around 8 terms.
+First we picked how many terms we should have in the best predictive linear model by using stepwise model selection with AIC. In order to reduce runtime, we used the quality and information scores as summaries of the underlying response ratings. Starting from these 39 predictors, the model summarized in Table 1 was produced with only 10 predictors. This suggests that aside from these 10 predictors, the others have a negligible effect size.
 
-```{r cv, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:cv} Cross validation error for each number of predictors"}
+The model suggests that the most important predictors are whether the participant would normally get a checkup with symptoms of a disease (RecExam), the reason for their last exam (RecExam), 
+
+```{r q2, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q2} Cross validation error for each number of predictors"}
 # http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
-
-dat_q2 <- dat[2:48] %>% filter(RecPerExam != "unknow") %>% droplevels()
-colnames(dat_q2)[11] <- "y"
+# dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
+# dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
+# http://utstat.toronto.edu/~brunner/oldclass/appliedf11/handouts/2101f11StepwiseLogisticR.pdf
+dat_q2 <- dat[, c(2:30,36:41, 46:50)] %>% filter(RecPerExam != "unknow") %>%
+  na.omit() %>% droplevels() 
+#colnames(dat_q2)[11] <- "y"
 # dat_q2$y <- recode(dat_q2$y, "b1224" = 0, "g24"= 1, "less12" =2,
 #                    .default = levels(dat_q2$y))
-dat_q2 <- dat_q2  %>% select(-y, everything())
+#dat_q2 <- dat_q2  %>% select(-y, everything())
 
-set.seed(8)
-library(bestglm)
-# res.bestglm <-
-#     bestglm(Xy = dat_q2,
+library(MASS)
+full.model <- glm(RecPerExam ~., data = dat_q2, family = binomial)
+coef(full.model)
+step.model <- full.model %>% stepAIC(#direction = "forward",
+                                     steps = 1000,
+                                     trace =FALSE)
+
+# set.seed(8)
+# library(bestglm)
+# res.bestglm <-bestglm(Xy = dat_q2,
 #             family = gaussian,
 #             IC = "AIC",                 # Information criteria for
-#             method = "exhaustive")
+#             method = "forward")
 
 
 
@@ -260,56 +289,162 @@ library(bestglm)
 # plot(mean_cv_errors, type='b', xlab = "Number of predictors",
 #      ylab = "Mean cross validation error (percent)")
 # points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
-plot(1:5)
+stargazer(step.model,
+           #model.numbers = TRUE,
+          #object.names = TRUE,
+        #column.labels = c("", "model 4"),
+          flip = TRUE,
+          header=FALSE, type = "latex",
+          intercept.bottom = FALSE, out.header = FALSE,
+          label = "tab:regression",
+          font.size="small",
+          column.sep.width = "1pt",
+          single.row = TRUE,
+          omit.table.layout = "n",
+          #model.names = FALSE, # remove model names
+          title = "Terms included in models of views vs. posts")
 ```
 
 
-Next we fit the model to RecPerExam with the top XXX variables. We found the top 
+Next we fit the model to RecPerExam with the top variables. We found that 
 
 ## Q3. 
 
 **Can we predict which people would be easiest to convince? That is, some people might be on the edge, and would get an exam with a little extra push; some people are very determined and would not get an exam no matter how hard you try. Using a classifier, can you find the patients who haven’t gotten an exam but are most like other patients who have? Be sure to tell us how well your classifier works, so we know whether this is reliable.**
 
-In order to predict which people would be easiest to convince to take a GHE every 12 months, we again build a model of the time since respondent last visited a doctor for a check-up (RecPerExam). One of the four responses is 'unknown', meaning the respondent doesn't know when they last visited a doctor for a check-up when not prompted by a specific illness. However, we can try to predict for the respondents who answered 'unknown' whether they would fall into one of the other three categries  (less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months). 
+In order to predict which people would be easiest to convince to take a GHE every 12 months, we again build a model of the time since respondent last visited a doctor for a check-up (RecPerExam). One of the four responses is 'unknown', meaning the respondent doesn't know when they last visited a doctor for a check-up when not prompted by a specific illness. However, we can try to predict for the respondants who answered 'unknown' whether they would fall into one of the other three categries  (less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months). 
 
-We first set aside the cases for which RecPerExam is 'unknown'. Working with the remaining 1467 cases, we built a XXXXX model to predict RecPerExam. Since here we are interested in predicting RecPerExam, rather than interpretation, we decided to include all of the potential predictor variables (other than id). We randomly shuffled the rows and split the data into a training and test set. The performance of the test set as seen in Figure XXXXXXX
+We first set aside the cases for which RecPerExam is 'unknown'. Working with the remaining 1467 cases, we built a random forest model using teh package Ranger to predict RecPerExam. Since here we are interested in predicting RecPerExam, rather than interpretation, we decided to include all of the potential predictor variables (other than id). To avoid missing values as much as possible, we also used our quality and information scores in the place of the underlying ratings. We randomly shuffled the rows and split the data 7:3 into a training and test set. 
 
-```{r q3, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
-# Randomize rows of top performer
+To check how many trees we should have in the random forest, we first plotted the error versus the number of trees when using default parameters for the random forest in Figure \ref{fig:q3}. We can see that without tuning, the performance error stabilizes around 100 trees. As well the performance on the cases with less than 12 months are predicted better than the other two cases due to the greater number of cases .
 
-# Subset data for training and testing
-# N_train<- round(nrow(example)*0.75)
-# train<- example[1:N_train,]
-# test<- example[(N_train+1):nrow(example),]
-# colnames(train)[1:2]<- c("Diagnosis", "Eigen_gene")
-# colnames(test)[1:2]<- c("Diagnosis", "Eigen_gene")
-# 
+```{r q3, fig.width=8, fig.height=5, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q3}  Plot of error of random forest model of RecPerExam versus the number of trees when using default parameters. OOB is the out of bag error. Levels of RecPerExam include less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months Performance on the cases with less than 12 months are predicted better than the other two time periods."}
+library(rsample)      # data splitting 
+library(randomForest) # basic implementation
+library(ranger)       # a faster implementation of randomForest
+library(caret)        # an aggregator package for performing many machine learning models
+library(h2o)          # an extremely fast java-based platform
+
+# dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
+# dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
+
+dat_q3 <- dat[2:48] %>% filter(RecPerExam != "unknow") %>% droplevels() %>% dplyr::select(-c(31:35, 42:45)) %>% na.omit()
+# split
+set.seed(123)
+split <- initial_split(dat_q3, prop = .7)
+train <- training(split)
+test  <- testing(split)
+
+m1 <- randomForest(
+  formula = as.factor(RecPerExam) ~ .,
+  na.action = na.omit,
+  data    = train
+)
+
+
+layout(matrix(c(1,2),nrow=1),
+       width=c(4,1))
+par(mar=c(5,4,4,0)) #No margin on the right side
+plot(m1, log="y")
+par(mar=c(5,0,4,2)) #No margin on the left side
+plot(c(0,1),type="n", axes=F, xlab="", ylab="")
+legend("top", colnames(m1$err.rate),col=1:4,cex=0.8,fill=1:4)
+```
+
+Subsequently we used ranger to tune the following parameters, proceeding with 100 trees. 
+
+* mtry: number of variables to randomly sample as candidates at each split. We tried a range from 2 to 46 (the total number of predictors).
+* minimum node size: the number of samples in each terminal node. Lower node size means more complexity.
+* sample size: number of samples to train upon.
+
+The parameters of the best classifier, which achieved an out of bag root mean squared error of 0.47, were mtry=23, node size of 5, and sample size of 0.6. We verified the performance of this classifier on the test set. It achieved a test set accuracy of 76% as seen in Table 2. 
+
+We were also interested in characteristics of the patients who haven’t gotten an exam in the last 12 months, but are most like other patients who have. We plotted the variable importance of this classifier in Figure \ref{fig:tune} and found considerable overlap with the significant variables found by glm model fitting.
+
+```{r tune, fig.width=6, results='asis', fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:tune} Variable importance of tuned random forest classifier."}
+
+# hyperparameter grid search
+hyper_grid <- expand.grid(
+  mtry       = seq(20, 30, by = 3),
+  node_size  = seq(3, 9, by = 2),
+  sampe_size = c(.6, .70, .80),
+  OOB_RMSE   = 0
+)
+# total number of combinations
+nrow(hyper_grid)
+
 # # Build model and predict   
 # model_IFGyel<- glm(Diagnosis ~ Eigen_gene, data = train, family = binomial())
 # pred<- predict(model_IFGyel, newdata= test, type= "response")
 
 # Convert predictions to accuracy metric
-plot(1:5)
+for(i in 1:nrow(hyper_grid)) {
+  
+  # train model
+  model <- ranger(
+    formula         = as.factor(RecPerExam) ~ ., 
+    data            = train, 
+    num.trees       = 100,
+    mtry            = hyper_grid$mtry[i],
+    min.node.size   = hyper_grid$node_size[i],
+    sample.fraction = hyper_grid$sampe_size[i],
+    seed            = 123
+  )
+  
+  # add OOB error to grid
+  hyper_grid$OOB_RMSE[i] <- sqrt(model$prediction.error)
+}
 
+tab <- hyper_grid %>% 
+  dplyr::arrange(OOB_RMSE) %>%
+  head(10)
+
+OOB_RMSE <- vector(mode = "numeric", length = 100)
+
+for(i in seq_along(OOB_RMSE)) {
+
+  optimal_ranger <- ranger(
+    formula         = as.factor(RecPerExam) ~ ., 
+    data            = train, 
+    num.trees       = 100,
+    mtry            = 23,
+    min.node.size   = 5,
+    sample.fraction = .6,
+    importance      = 'impurity'
+  )
+  
+  OOB_RMSE[i] <- sqrt(optimal_ranger$prediction.error)
+}
+
+RMSE = function(m, o){
+  sqrt(mean((m - o)^2))
+}
+
+new <- predict(optimal_ranger, data=test)
+sqrt(sum((new$predictions - test$RecPerExam)^2)/length(predictions))
+library(printr)
+kable(table(new$predictions, test$RecPerExam)/length(new$predictions),
+      caption = "Predictions of the tuned random forest model (y-axis) versus true classifications (x-axis). Performance achieved is about 76%.")
+
+optimal_ranger$variable.importance %>% 
+  tidy() %>%
+  dplyr::arrange(desc(x)) %>%
+  dplyr::top_n(10) %>%
+  ggplot(aes(reorder(names, x), x)) +
+  geom_col() +
+  coord_flip() +
+  xlab("variable")+
+  ggtitle("Top 10 important variables")
 ```
 
 
-Next, we used our classifier to predict the status of the unknown cases. We were interested in characteristics of the patients who haven’t gotten an exam in the last 12 months, but are most like other patients who have. 
+Next, we used our classifier to predict the status of the 466 unknown cases.  The classifier predicts 343 'less12' cases, 101 'g24' cases and 22 'b1224' cases. This suggests that about 101/343 or about 30% of respondents in the population studied could be prompted to get an exam if they had not gotten one in the last 12 months.
 
-```{r classifier, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
-# > which(rownames(dat) == 8346,)
-# [1] 7519
+```{r classifier, fig.width=6, results='asis', fig.height=3, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:classifier} Distribution of predicted RecPerExam for respondents who did not know when their last visit was. RecPerTime represents the time since therespondent last visited a doctor for a check-up, not prompted by a specific illness."}
+dat_last <- dat[2:48] %>% filter(RecPerExam == "unknow") %>% droplevels() %>% dplyr::select(-c(31:35, 42:45)) %>% na.omit()
 
-#temp <- dat[-7519,]
-# mod <- glm(views ~ posts + offset(log(startdate)), 
-#            family =quasipoisson(log), 
-#            data = dat)
-# mod <- glm(views ~ posts + authors + offset(log(startdate)), 
-#            family =quasipoisson(log), 
-#            data = dat)
-# par(mfrow=c(2,2))
-# plot(mod)
-plot(1:5)
+new <- predict(optimal_ranger, data=dat_last)
+histogram(new$predictions)
 ```
 ## Conclusion
 
