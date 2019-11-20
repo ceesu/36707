@@ -165,7 +165,7 @@ boxplot(data$height)
 ```
 
 
-```{r trim, fig.width=5, fig.height=3, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:trim} A-C) Distributions of important demographic variables in the raw data show outliers. We trimmed the outliers in the date, age and BMI. D) We can also see BMI is perfectly calculated from height and weight."}
+```{r trim, fig.width=8, fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:trim} A-C) Distributions of important demographic variables in the raw data show outliers. We trimmed the outliers in the date, age and BMI. D) We can see BMI is corresponding well to BMI calculated from height and weight."}
 theme_hw <- theme(plot.title = element_text(hjust = 0.5),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank()
@@ -211,104 +211,90 @@ chart.Correlation(dat[vars], pch=19)
 
 **Overall, how do people rate the attractiveness, impressiveness, sufficiency, and popularity of information they receive in checkups? Give us some summaries of these variables, as well as variables like assurance, reliability, and empathy that tell us how well our doctors and nurses are doing, so we know how to improve.**
 
-The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the attractiveness (AttractInfo), impressiveness (ImpressInfo), sufficiency (SuffInfo), and popularity (PopularInfo) of information they recieve. The average rating about the type of information recieved in GHEs is significantly correlated and tends to score a 3 on the 5-point scale. There is also clustering of the ratings giving perceptions of the quality of periodic GHE sessions which includes the tangibles (Tangibles), assurance (Assurance), reliability (Reliability), responsibility (Respon), and empathy (Empathy) variables. These ratings are higher on average. 
+In order to summarize how respondents felt about checkups, we first looked at the distibutions of the ratings they gave of the checkups. The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the main rating varaibles. Ratings of the type of information recieved during GHEs include their attractiveness (AttractInfo), impressiveness (ImpressInfo), sufficiency (SuffInfo), and popularity (PopularInfo) of information. These ratings are correlated. There are also ratings of the perception of quality of periodic GHE sessions which includes the tangibles (Tangibles), assurance (Assurance), reliability (Reliability), responsibility (Respon), and empathy (Empathy) variables.
+
+We can see that the average rating about the type of information recieved in GHEs is significantly correlated and tends to score a 3 on the 5-point scale. As well, the 
 
 
 ```{r q1, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
 
-mod <- glm(views ~ posts + authors + offset(log(startdate)), 
-           family =quasipoisson(log), 
-           data = dat)
-par(mfrow=c(2,2))
-plot(mod)
+# mod <- glm(views ~ posts + authors + offset(log(startdate)), 
+#            family =quasipoisson(log), 
+#            data = dat)
+# par(mfrow=c(2,2))
+# plot(cars)
+plot(1:5)
 ```
+
+
+We were further interested in whether
 
 ## Q2. 
 
 **What factors make a person less likely to get check-up every twelve months? Find the most important factors that could help us design our advertising, and give us some measure of how important they are.**
 
-Here we want to predict the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels, among them is 'unknown'. We first trimmed the cases that are unknown leaving 1467 cases. Since the response variable is not continuous we used a binomial glm to model. 
+We aimed to determine what factors make a person less likely to get check-up every twelve months by modelling the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels: less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months, unknown = respondent doesn't know. We first trimmed the cases that are 'unknown' since this is not an informative response, leaving 1467 cases. Since the response variable is composed of discrete events, we used a binomial glm.
 
-We performed variable selection among all of the variables available (except the participant id) in order to exclude variables without large effects. First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation with best subsets regression and plotted the mean squared error in Figure \ref{fig:cv}. We used the bestglm package to help fit the glm to the training data. This analysis shows validation error is lowest around 8 terms.
-
-Next we fit the model to RecPerExam with the top XXX variables. 
+We performed best subset variable selection among all of the variables available (except the participant id) in order to exclude variables without large effects in this model. First we picked how many terms we should have in the best predictive linear model by using 10-fold cross validation with best subsets regression and plotted the mean squared error in Figure \ref{fig:cv}. We used the bestglm package to perform the cross validation. This analysis shows validation error is lowest around 8 terms.
 
 ```{r cv, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:cv} Cross validation error for each number of predictors"}
 # http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
 
-dat_q2 <- dat %>% filter(RecPerExam != "unknow") %>% droplevels()
-library(leaps)
-set.seed(12)
-folds=sample(rep(1:10,length=nrow(dat_q2)))
+dat_q2 <- dat[2:48] %>% filter(RecPerExam != "unknow") %>% droplevels()
+colnames(dat_q2)[11] <- "y"
+# dat_q2$y <- recode(dat_q2$y, "b1224" = 0, "g24"= 1, "less12" =2,
+#                    .default = levels(dat_q2$y))
+dat_q2 <- dat_q2  %>% select(-y, everything())
 
-predict.regsubsets=function(object,newdata,id,...){
-  form=as.formula(object$call[[2]])
-  mat=model.matrix(form,newdata)
-  coefi=coef(object,id=id) # extract the 'top' coefficients according to best subsets
-  mat[,names(coefi)]%*%coefi
-}
+set.seed(8)
+library(bestglm)
+# res.bestglm <-
+#     bestglm(Xy = dat_q2,
+#             family = gaussian,
+#             IC = "AIC",                 # Information criteria for
+#             method = "exhaustive")
 
-vars <- colnames(dat_q2)[2:48]
-cv.errors=matrix(NA,10,length(vars))
-#### ITERATE OVER K FOLDS
-for(k in 1:10){
-  # best fit on the train data
-  # nvmax is maximum size of subsets to examine
-  # it may take too long to do exhaustive search
-  best.fit=regsubsets(RecPerExam ~ ., data=dat_q2[folds!=k, vars],nvmax=length(vars),
-                      method = "forward") 
-                      #method = "exhaustive") 
-  
-  #### ITERATE OVER EACH OF THE I NUMBER OF PREDICTORS
-  for(i in 1:40){
-    lbw.for.bestglm <-
-    bestglm(Xy = lbw.for.bestglm,
-            family = gaussian,
-            IC = "AIC",                 
-            method = "exhaustive")
-    # get the fit on 'i' variables
-    pred=predict.regsubsets(best.fit,dat_q2[folds==k,vars], id=i)
-    cv.errors[k,i]=mean((as.numeric(dat_q2$RecPerExam[folds==k])-pred)^2)
-    
-  }
-}
 
-# Take the mean of over all folds for each model size
-mean_cv_errors = apply(cv.errors, 2, mean)
-
-# Find the model size with the smallest cross-validation error
-min = which.min(mean_cv_errors)
 
 # Plot the cross-validation error for each model size, highlight the min
-plot(mean_cv_errors, type='b', xlab = "Number of predictors",
-     ylab = "Mean cross validation error (percent)")
-points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
-
+# plot(mean_cv_errors, type='b', xlab = "Number of predictors",
+#      ylab = "Mean cross validation error (percent)")
+# points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
+plot(1:5)
 ```
+
+
+Next we fit the model to RecPerExam with the top XXX variables. We found the top 
 
 ## Q3. 
 
 **Can we predict which people would be easiest to convince? That is, some people might be on the edge, and would get an exam with a little extra push; some people are very determined and would not get an exam no matter how hard you try. Using a classifier, can you find the patients who haven’t gotten an exam but are most like other patients who have? Be sure to tell us how well your classifier works, so we know whether this is reliable.**
 
-The variable which best 
+In order to predict which people would be easiest to convince to take a GHE every 12 months, we again build a model of the time since respondent last visited a doctor for a check-up (RecPerExam). One of the four responses is 'unknown', meaning the respondent doesn't know when they last visited a doctor for a check-up when not prompted by a specific illness. However, we can try to predict for the respondents who answered 'unknown' whether they would fall into one of the other three categries  (less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months). 
+
+We first set aside the cases for which RecPerExam is 'unknown'. Working with the remaining 1467 cases, we built a XXXXX model to predict RecPerExam. Since here we are interested in predicting RecPerExam, rather than interpretation, we decided to include all of the potential predictor variables (other than id). We randomly shuffled the rows and split the data into a training and test set. The performance of the test set as seen in Figure XXXXXXX
 
 ```{r q3, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
-# > which(rownames(dat) == 8346,)
-# [1] 7519
+# Randomize rows of top performer
 
-#temp <- dat[-7519,]
-# mod <- glm(views ~ posts + offset(log(startdate)), 
-#            family =quasipoisson(log), 
-#            data = dat)
-mod <- glm(views ~ posts + authors + offset(log(startdate)), 
-           family =quasipoisson(log), 
-           data = dat)
-par(mfrow=c(2,2))
-plot(mod)
+# Subset data for training and testing
+# N_train<- round(nrow(example)*0.75)
+# train<- example[1:N_train,]
+# test<- example[(N_train+1):nrow(example),]
+# colnames(train)[1:2]<- c("Diagnosis", "Eigen_gene")
+# colnames(test)[1:2]<- c("Diagnosis", "Eigen_gene")
+# 
+# # Build model and predict   
+# model_IFGyel<- glm(Diagnosis ~ Eigen_gene, data = train, family = binomial())
+# pred<- predict(model_IFGyel, newdata= test, type= "response")
+
+# Convert predictions to accuracy metric
+plot(1:5)
+
 ```
 
 
-
+Next, we used our classifier to predict the status of the unknown cases. We were interested in characteristics of the patients who haven’t gotten an exam in the last 12 months, but are most like other patients who have. 
 
 ```{r classifier, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Diagnostic plots for the fit of model 'views ~ posts + authors + offset(log(startdate)'. Multiple outliers are apparent. These outliers occurred in topics belonging to Miscellaneous sciences, Speculations, and Medicine."}
 # > which(rownames(dat) == 8346,)
@@ -318,12 +304,15 @@ plot(mod)
 # mod <- glm(views ~ posts + offset(log(startdate)), 
 #            family =quasipoisson(log), 
 #            data = dat)
-mod <- glm(views ~ posts + authors + offset(log(startdate)), 
-           family =quasipoisson(log), 
-           data = dat)
-par(mfrow=c(2,2))
-plot(mod)
+# mod <- glm(views ~ posts + authors + offset(log(startdate)), 
+#            family =quasipoisson(log), 
+#            data = dat)
+# par(mfrow=c(2,2))
+# plot(mod)
+plot(1:5)
 ```
 ## Conclusion
+
+
 
 ## Bibliography
