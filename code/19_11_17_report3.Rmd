@@ -90,21 +90,21 @@ To investigate this question, we used a public health dataset from [@Vuong2017].
 
 The data contains 50 variables concerning many relevant demographics and responses, organized into three main categories. The first category are demographics such as BMI, age, education and sex. The second category quantifies their attitude towards health such as whether they can basic medical equipment, and how much time the respondent spends on sports and physical exercise. The last category quantifies their attitudes relating directly to the GHEs such as their perceived ability of examiner and the percieved attractiveness of information they received in check-ups.
 
-We first used this data to evaluate the perception of the GHEs and found that although GHEs were not percieved badly on average, the participants rated the quality of GHEs higher than the information which was given at the GHE. Secondly, we evaluated the most important variables to determining whether a respondent would obtain a GHE by modelling their time since checkup in terms of the other variables. We found that the most important predictors included whether they had checkups when they obtained diseases, whether they were updated on their own health and that of their family, how frequently they believed that they should have a checkup and their rating of the quality of GHEs. In particular, 
+We first used this data to evaluate the perception of the GHEs and found that although GHEs were not percieved badly on average, the participants rated the quality of GHEs higher than the information which was given at the GHE. Secondly, we evaluated the most important variables to determining whether a respondent would obtain a GHE by modelling their time since checkup in terms of the other variables. We found that the most important predictors included whether they had checkups when they obtained diseases, whether they were updated on their own health and that of their family, how frequently they believed that they should have a checkup and their rating of the quality of GHEs. In particular, in our model more frequent incidence of doctor visits increased the probability of getting an unprompted checkup by 5 fold.
 
-Lastly, we checked what proportion of the population might be influenced to have a checkup by building a random forest classifier to distinguish those patients who would obtain a GHE within 12 months from those who would not. The classifier achieved good performance of 76% on the test data. We used our classifier to predict what kind of responses would be given by those who answered that they did not know when they would last have a GHE. We found that about 30% of these respondents were similar to those who had answered that they had a GHE within the last 12-24 months. This suggests a significant portion of the population might be amenable to getting a checkup if prompted. Additionally, we studied what were the most important variables in determining their classification. 
+Lastly, we checked what proportion of the population might be influenced to have a checkup by building a random forest classifier to distinguish those patients who would obtain a GHE within 12 months from those who would not. The classifier achieved good performance of 76% on the test data and had reasonable diagnostics. We used our classifier to predict what kind of responses would be given by those who answered that they did not know when they would last have a GHE. We found that about 30% of these respondents were similar to those who had answered that they had a GHE within the last 12-24 months. This suggests a significant portion of the population might be amenable to getting a checkup if prompted. Additionally, we studied what were the most important variables in determining their classification. 
 
 Overall, our analysis suggests that the information given at checkups may be improved in order to raise public perception of GHEs in Vietnam. Further, those who interact more often with the health system seem more inclined to get regular yearly GHEs. 
 
 ## Introduction
 
-In this report, we are interested to determine whether we can analyze the  Additionally, their own schedules, biases or experiences with checkups may prevent them from wanting to go see the doctor. To investigate this question, we used a public health dataset from [@Vuong2017]. It was collected by public health researchers in Vietnam who wanted to determine what obstacles prevented widespread use of regular check-ups. They surveyed respondants by traveling and conducting in person interviews for about 10–15 minutes. This produced 2,068 valid responses of which half did not know when their last GHE was scheduled. However, the other 1467 surveyed had a GHE before.
+Due to their importance for detecting early incidence of disease, we wanted to determine whether we can determine what factors would explain and predict who would undergo a yearly general health examination (GHE). Based on the previous work of [@Vuong2017] we knew that specific demographics, personal biases or experiences with checkups may prevent Vietnamese citizens from wanting to undergo GHEs. To investigate this question, we used the public health dataset published by [@Vuong2017]. It was collected by public health researchers in Vietnam who wanted to determine what obstacles prevented use of regular check-ups. They surveyed respondants with in person interviews and produced 2,068 responses. Of these cases, 1467 surveyed reported when they had undergone a GHE.
 
-The dataset includes three categories of variables about the participants. The first category are demographics such as BMI, age, education and sex. The second category quantifies their attitude towards health such as whether they can basic medical equipment, and how much time the respondent spends on sports and physical exercise. The last category quantifies their attitudes relating directly to the GHEs such as their perceived ability of examiner and the percieved attractiveness of information they received in check-ups.
+The dataset includes three categories of variables (50 variables total) about the participants. The first category are demographics such as BMI, age, education and sex. The second category quantifies their attitude towards health such as whether they can basic medical equipment and how much time the respondent spends on sports and physical exercise. The last category quantifies their attitudes relating directly to the GHEs such as their perceived ability of examiner and the percieved attractiveness of information they received in check-ups.
 
-We first used this data to evaluate the perception of the GHEs and found that although GHEs were not percieved badly on average, the participants rated the quality of GHEs higher than the information which was given at the GHE. Secondly, we evaluated the most important variables to determining whether a respondent would obtain a GHE by modelling their time since checkup in terms of the other variables using a generalized linear model. We found that the most important predictors included whether they had checkups when they obtained diseases, whether they were updated on their own health and that of their family, how frequently they believed that they should have a checkup and their rating of the quality of GHEs. 
+We first used this data to evaluate the perception of the GHEs and found that although GHEs were not percieved badly on average, the participants rated the quality of GHEs higher than the information which was given at the GHE. Secondly, we evaluated the most important variables to determining whether a respondent would obtain a GHE by modelling whether they had obtained a checkup within the past year using a logistic generalized linear model. We selected variables by stepwise selection and examined the explanatory effect size. We found that the most important predictors whether they visited the doctor for prompted reasons and their age. This suggests that aside from age which is strongly correlated with health, contact with the medical system is strongly explanatory of willingness to undergo GHEs.
 
-Lastly, we checked what proportion of the population might be influenced to have a checkup by building a random forest classifier to distinguish those patients who would obtain a GHE within 12 months from those who would not. The classifier achieved good performance of 76% on the test data. We used our classifier to predict what kind of responses would be given by those who answered that they did not know when they would last have a GHE. We found that about 30% of these respondents were similar to those who had answered that they had a GHE within the last 12-24 months. This suggests a significant portion of the population might be amenable to getting a checkup if prompted. Additionally, we studied what were the most important variables in determining their classification. Our random forest classifier assigned the highest importance to their health demographics, whether they had an unprompted checkup, and for what reason. These variables were also identified as significantly correlated with the incidence of an unprompted checkup by our generalized linear model. 
+Lastly, we checked what proportion of the population might be influenced to have a checkup by building a random forest classifier to distinguish those patients who would obtain a GHE within 12 months from those who would not. The classifier achieved good performance of 76% on the test data. We used our classifier to predict what kind of responses would be given by those who answered that they did not know when they would last have a GHE. We found that about 30% of these respondents were similar to those who had answered that they had a GHE within the last 12-24 months. This suggests a significant portion of the population might be amenable to getting a checkup if prompted. Additionally, we studied what were the most important variables in determining their classification. Our random forest classifier assigned the highest importance to their health demographics, whether they had an unprompted checkup, and for what reason. These variables were also identified as significantly correlated with the incidence of an unprompted checkup by our logistic model. 
 
 
 ## Methods
@@ -117,17 +117,17 @@ We also looked for outliers in the data among the remaining variables. Only the 
 
 ## Exploratory Data Analysis 
 
-We may hypothesize that the respondent's general health is inversely related to their incidence of disease. Furthermore their perceptions of GHEs may be approximately correlated with what value they have derived from the procedures in improving their health. Lastly the number of GHEs brings up the cost of healthcare. 
+We may hypothesize that the respondent's general health is inversely related to their visits to GHEs. Furthermore their perceptions of GHEs may be approximately correlated with what value they have derived from the procedures in improving their health. Therefore our hypothesis of the connection between frequency of GHEs and the other covariates is illustrated in Figure 1.
 
 ```{r causal, fig.width=8, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
 
 g <- dagitty('dag {
     health [pos="0,0.75"]
-    incidence_disease [pos="1,0.5"]
+    disease [pos="1,0.5"]
     perception_of_GHE [pos="1,1"]
     frequency_of_GHE [pos="0.5,0.75"]
     health_insurance [pos="0,0.5"]
-    health -> incidence_disease
+    health -> disease
     health_insurance -> frequency_of_GHE<-health 
     frequency_of_GHE -> perception_of_GHE
 }')
@@ -244,26 +244,19 @@ plot_grid(p3, p4, p1,p2,
 
 We aimed to determine what factors make a person less likely to get check-up every twelve months by modelling the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels: less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months, unknown = respondent doesn't know. We first trimmed the cases that are 'unknown' since this is not an informative response, leaving 1467 cases. We interpreted responses with the less24 value as 'likely to get a check-up every twelve months', and those with the g24 value as not likely to get a checkup very twelve months. In this setup, we additionally trimmed the data for respondents who got their checkup between 12 and 24 months before the survey since it's unclear which category they wold fall into.
 
-Since the response variable is composed of two discrete events after filtering, we used a binomial generalized linear model (glm). However there is some class imbalance as there are about twice as many cases of less than 12 months than of the other level (data not shown). We also note that another limitation of this model is that we may not have a representative sample for the population which is unwilling to undergo a yearly checkup.
+Since the response variable is composed of two discrete events after filtering, we used a logistic generalized linear model (glm). However there is some class imbalance as there are about twice as many cases of less than 12 months than of the other level (data not shown). We also note that another limitation of this model is that we may not have a representative sample for the population which is unwilling to undergo a yearly checkup.
 
 First we picked the terms we should have in the best explanatory model by using stepwise model selection with AIC using the *mass* package. In order to reduce runtime, we used the quality and information scores as summaries of the underlying response ratings. The diagnostic plots for the chosen model shown in Figure \ref{fig:q2} are meant for linear models, which is why we see that for example the residuals are not highly normally distributed in the normal QQ plot. However they show that we do not see significant outlier cases. For example, in the plot of the Residuals vs. Leverage, there are no outliers outside the Cook's distance lines. This suggests that the model is reasonable despite the class imbalance in the data.
 
-Starting from these 39 predictors and AIC of  609.5, the model summarized in Table 1 was produced with 21 predictors and a reduced AIC of 539. We evaluated how important each of the terms was by looking at their effect size and the significance level of the effect size. The most important predictors with effect size significant at p < 0.05 are the following, listed with the baseline factor level for each variable:
+Starting from these 39 predictors and AIC of  609.5, the model summarized in Table 1 was produced with 21 predictors and a reduced AIC of 539. The baseline value of the response for this model is "g24", whereas the alternate value is "less24". Therefore, these coefficients  We evaluated how important each of the terms was by looking at their effect size and the significance level of the effect size. We see that the factor predictors chosen have at least one level ech with effect size with an effect significant at p < 0.05. However among these, the variables with the largrest fitted effect size are "RecExam", "ReaExam" and "Age". Compared to the respondent with baseline values for all variables, we can interpret these effects as follows:
+ 
+* if the time since the respondent last visited a doctor with symptoms of a disease (RecExam) is over 24 months, they are approximately exp(-3.031)= 5% less likely to get a checkup yearly. However if their last visit was within 12 months or less, they are approximately exp(1.716)= 5.5 times more likely than someone whose last visit was between 12 and 24 months.
+* if the reason for visit (ReaExam) is voluntary, they are approximately exp(1.598)= 5 times more likely to get a checkup yearly; if the reason is due to someone's request, they are approximately exp(2.060)= 7 times more likely than someone whose last visit was for 'worrying symptoms'.
+* if their age (Age) is over 18 and less than 50, they are at least exp(1.574)= 5 times more likely to get a checkup yearly than someone who is 18 or under.
 
-* Sex: male, relative to female.
-* RecExam: when the participant had a checkup with symptoms of a disease either <12 months or >24 months, relative to patients who did between 12 and 24 months.
-* ReaExam: when the reason for their last exam is request, given relative to a patient whose reason for their last exam is worrying symptoms.
-* FlwHealth: whether the respondent follows updates on their health measures, relative to one who does not.
-* AcqTrmt: whether there is a member of the respondent's family receiving long-term medical treatment, relative to one who does not.
-* MedCabinet: whether the respondent keeps a medical cabinet and basic medical equipment, relative to one who does not.
-* UseMon: if respondent would use extra money to have a check-up, versus one who would soon.
-* SuitFreq: if respondent believes check-ups should be done every 6 months, versus one who believes it should be done every 12 months.
-* AfterIT: if respondent needed to have a check-up according to an app, relative to someone who will not.
-* quality score: a combined score of their ratings of the quality of GHEs, versus the .
+In particular, the effect size of the RecExam variable is largest as well as significant at the p < 0.001 level. The coefficients in Table 1 suggest that relative to a respondent with the baseline values of the variables given above, a respondent who makes more frequent contact with the healthcare system is much more likely to get a yearly checkup.
 
-In particular, the effect size of the RecExam variable is largest as well as significant at the p < 0.001 level. The coefficients in Table 1 suggest that relative to a respondent with the baseline values of the variables given above, a respondent who 
-
-```{r q2, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q2} Fit metrics for the model chosen by stepwise variable selection. In general, the "}
+```{r q2, fig.width=5, results='asis', fig.height=5, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:q2} Fit metrics for the model chosen by stepwise variable selection."}
 # http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
 # dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
 # dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
@@ -309,7 +302,7 @@ stargazer(step.model,
           single.row = TRUE,
           omit.table.layout = "n",
           #model.names = FALSE, # remove model names
-          title = "Terms picked through stepwise selection in the binomial glm model of RecPerExam, or the time since the respondent last visited a doctor for an unprompted check-up.")
+          title = "Terms picked through stepwise selection in the logistic glm model of RecPerExam. Stars indicate the level of significance of the fitted effect size.")
 ```
 
 ## Q3. 
@@ -320,7 +313,7 @@ In order to predict which people would be easiest to convince to take a GHE ever
 
 We first set aside the cases for which RecPerExam is 'unknown'. Working with the remaining 1467 cases, we built a random forest model using teh package Ranger to predict RecPerExam. Since here we are interested in predicting RecPerExam, rather than interpretation, we decided to include all of the potential predictor variables (other than id). To avoid missing values as much as possible, we also used our quality and information scores in the place of the underlying ratings. We randomly shuffled the rows and split the data 7:3 into a training and test set. 
 
-To check how many trees we should have in the random forest, we first plotted the error versus the number of trees when using default parameters for the random forest in Figure \ref{fig:q3}. We can see that without tuning, the performance error stabilizes around 100 trees. As well the performance on the cases with less than 12 months are predicted better than the other two cases due to the greater number of cases .
+To check how many trees we should have in the random forest, we first plotted the error versus the number of trees when using default parameters for the random forest in Figure \ref{fig:q3}. We can see that without tuning, the performance error stabilizes around 100 trees. As well the performance on the cases with less than 12 months are predicted better than the other two cases due to the greater number of cases.
 
 ```{r q3, fig.width=8, fig.height=5, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q3}  Plot of error of random forest model of RecPerExam versus the number of trees when using default parameters. OOB is the out of bag error. Levels of RecPerExam include less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months Performance on the cases with less than 12 months are predicted better than the other two time periods."}
 
@@ -371,7 +364,7 @@ The parameters of the best classifier, which achieved an out of bag root mean sq
 
 We were also interested in characteristics of the patients who haven’t gotten an exam in the last 12 months, but are most like other patients who have. We plotted the variable importance of this classifier in Figure \ref{fig:tune} and found considerable overlap with the significant variables found by glm model fitting.
 
-```{r tune, fig.width=6, results='asis', fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:tune} Variable importance of tuned random forest classifier."}
+```{r tune, fig.width=4, results='asis', fig.height=2, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:tune} Variable importance of tuned random forest classifier."}
 
 # hyperparameter grid search
 hyper_grid <- expand.grid(
@@ -381,7 +374,7 @@ hyper_grid <- expand.grid(
   OOB_RMSE   = 0
 )
 # total number of combinations
-nrow(hyper_grid)
+#nrow(hyper_grid)
 
 # # Build model and predict   
 # model_IFGyel<- glm(Diagnosis ~ Eigen_gene, data = train, family = binomial())
@@ -431,7 +424,7 @@ RMSE = function(m, o){
 }
 
 new <- predict(optimal_ranger, data=test)
-sqrt(sum((new$predictions - test$RecPerExam)^2)/length(predictions))
+#sqrt(sum((new$predictions - test$RecPerExam)^2)/length(predictions))
 #library(printr)
 kable(table(new$predictions, test$RecPerExam)/length(new$predictions),
       caption = "Predictions of the tuned random forest model (y-axis) versus true classifications (x-axis). Performance achieved is about 76%.")
@@ -443,7 +436,7 @@ optimal_ranger$variable.importance %>%
   ggplot(aes(reorder(names, x), x)) +
   geom_col() +
   coord_flip() +
-  xlab("variable")+
+  xlab("")+
   ggtitle("Top 10 important variables")
 ```
 
@@ -456,8 +449,13 @@ dat_last <- dat[2:48] %>% filter(RecPerExam == "unknow") %>% droplevels() %>% dp
 new <- predict(optimal_ranger, data=dat_last)
 histogram(new$predictions)
 ```
+
 ## Conclusion
 
+We have examined the relationship between general health exam (GHE) attendance and many covariates of interest including demographic variables, self reported public perceptions, and health awareness of participants for the Vietnam health exams dataset. We first found that in terms of the public perception of GHEs, the quality of care recieved an above-average rating while the information provided in the GHE recieved a slightly below average rating. This suggests that the main area of improvement when trying to encourage the public to take GHEs more frequently is to increase the perception of the information given.
 
+Secondly, we saw that among the most important predictors of whether a respondent is more likely to take a GHE yearly without being prompted is how frequently they get examinations for other reasons. In fact our model suggests those who take a voluntary examination are 5 times more likely than even those who have 'worrying symptoms' to get unprompted checkups yearly. When we examined which variables are most important for the classifier that we built to identify which respondents would take a GHE yearly, we also found that the time of their last checkup for medical reasons was by far the variable with the highest importance. Based upon our classifier, about 30% of the cases which had not reported when their last GHE was had a similar profile 
+
+However, there are some caveats to this analysis. We found in our EDA that there is an imbalance between the number of people who self-reported as having a GHE within the past year, and those who gave all other responses. We also used those who reported as having a GHE within more than 2 years as a stand in for those who would be reluctant to undergo a general GHE and those who reported as having a GHE within 12-24 months as a stand in for those who could presumably be persuaded to undergo a general GHE. As well, inherently we did not have a precise measure of the underlying health of the respondents here, so it is difficult to determine their general health status which we hypothesized could be a confounder of how often they will attend a GHE. 
 
 ## Bibliography
