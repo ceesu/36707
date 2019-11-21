@@ -242,14 +242,17 @@ plot_grid(p3, p4, p1,p2,
 
 **What factors make a person less likely to get check-up every twelve months? Find the most important factors that could help us design our advertising, and give us some measure of how important they are.**
 
-We aimed to determine what factors make a person less likely to get check-up every twelve months by modelling the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels: less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months, unknown = respondent doesn't know. We first trimmed the cases that are 'unknown' since this is not an informative response, leaving 1467 cases. Since the response variable is composed of discrete events, we used a binomial generalized linear model (glm). However there is some class imbalance as there are about twice as many cases of less than 12 months than of the other two levels (data not shown). 
+We aimed to determine what factors make a person less likely to get check-up every twelve months by modelling the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels: less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months, unknown = respondent doesn't know. We first trimmed the cases that are 'unknown' since this is not an informative response, leaving 1467 cases. We interpreted responses with the less24 value as 'likely to get a check-up every twelve months', and those with the g24 value as not likely to get a checkup very twelve months. In this setup, we additionally trimmed the data for respondents who got their checkup between 12 and 24 months before the survey since it's unclear which category they wold fall into.
 
-First we picked the terms we should have in the best predictive linear model by using stepwise model selection with AIC. In order to reduce runtime, we used the quality and information scores as summaries of the underlying response ratings. The diagnostic plots for the chosen model shown in Figure \ref{fig:q2} are meant for linear models, which is why we see that for example the residuals are not highly normally distributed in the normal QQ plot. However they show that we do not see significant outlier cases. For example in the plot of the Residuals vs. Leverage, there are no outliers outside the Cook's distance lines. This suggests that the model is reasonable despite the class imbalance in the data.
+Since the response variable is composed of two discrete events after filtering, we used a binomial generalized linear model (glm). However there is some class imbalance as there are about twice as many cases of less than 12 months than of the other level (data not shown). We also note that another limitation of this model is that we may not have a representative sample for the population which is unwilling to undergo a yearly checkup.
 
-Starting from these 39 predictors, the model summarized in Table 1 was produced with only 10 predictors. This suggests that aside from these 10 predictors, the others have a negligible effect size. We evaluated how important each of the terms shown in  Table 1 was by looking at their effect size and the significance level of the effect size. The most important predictors with effect size significant at p < 0.05 are the following, listed with the baseline factor level for each variable:
+First we picked the terms we should have in the best explanatory model by using stepwise model selection with AIC using the *mass* package. In order to reduce runtime, we used the quality and information scores as summaries of the underlying response ratings. The diagnostic plots for the chosen model shown in Figure \ref{fig:q2} are meant for linear models, which is why we see that for example the residuals are not highly normally distributed in the normal QQ plot. However they show that we do not see significant outlier cases. For example, in the plot of the Residuals vs. Leverage, there are no outliers outside the Cook's distance lines. This suggests that the model is reasonable despite the class imbalance in the data.
 
-* RecExam, all levels: when the participant had a checkup with symptoms of a disease, relative to patients who did between 12 and 24 months.
-* ReaExam, request: the reason for their last exam, relative to a patient with worrying symptoms.
+Starting from these 39 predictors and AIC of  609.5, the model summarized in Table 1 was produced with 21 predictors and a reduced AIC of 539. We evaluated how important each of the terms was by looking at their effect size and the significance level of the effect size. The most important predictors with effect size significant at p < 0.05 are the following, listed with the baseline factor level for each variable:
+
+* Sex: male, relative to female.
+* RecExam: when the participant had a checkup with symptoms of a disease either <12 months or >24 months, relative to patients who did between 12 and 24 months.
+* ReaExam: when the reason for their last exam is request, given relative to a patient whose reason for their last exam is worrying symptoms.
 * FlwHealth: whether the respondent follows updates on their health measures, relative to one who does not.
 * AcqTrmt: whether there is a member of the respondent's family receiving long-term medical treatment, relative to one who does not.
 * MedCabinet: whether the respondent keeps a medical cabinet and basic medical equipment, relative to one who does not.
@@ -258,7 +261,7 @@ Starting from these 39 predictors, the model summarized in Table 1 was produced 
 * AfterIT: if respondent needed to have a check-up according to an app, relative to someone who will not.
 * quality score: a combined score of their ratings of the quality of GHEs, versus the .
 
-In particular, the effect size of the RecExam variable is largest as well as significant at the p < 0.001 level. The coefficients in Table 1 suggest that relative to a respondent with the baseline values of the variables given above, a respondent who XXXXX
+In particular, the effect size of the RecExam variable is largest as well as significant at the p < 0.001 level. The coefficients in Table 1 suggest that relative to a respondent with the baseline values of the variables given above, a respondent who 
 
 ```{r q2, fig.width=6, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q2} Fit metrics for the model chosen by stepwise variable selection. In general, the "}
 # http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
@@ -266,6 +269,7 @@ In particular, the effect size of the RecExam variable is largest as well as sig
 # dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
 # http://utstat.toronto.edu/~brunner/oldclass/appliedf11/handouts/2101f11StepwiseLogisticR.pdf
 dat_q2 <- dat[, c(2:30,36:41, 46:50)] %>% filter(RecPerExam != "unknow") %>%
+  filter(RecPerExam != "b1224") %>%
   na.omit() %>% droplevels() 
 #colnames(dat_q2)[11] <- "y"
 # dat_q2$y <- recode(dat_q2$y, "b1224" = 0, "g24"= 1, "less12" =2,
@@ -319,11 +323,17 @@ We first set aside the cases for which RecPerExam is 'unknown'. Working with the
 To check how many trees we should have in the random forest, we first plotted the error versus the number of trees when using default parameters for the random forest in Figure \ref{fig:q3}. We can see that without tuning, the performance error stabilizes around 100 trees. As well the performance on the cases with less than 12 months are predicted better than the other two cases due to the greater number of cases .
 
 ```{r q3, fig.width=8, fig.height=5, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q3}  Plot of error of random forest model of RecPerExam versus the number of trees when using default parameters. OOB is the out of bag error. Levels of RecPerExam include less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months Performance on the cases with less than 12 months are predicted better than the other two time periods."}
+
+# install.packages("rsample")
+# install.packages("randomForest")
+# install.packages("ranger")
+# install.packages("caret")
+
 library(rsample)      # data splitting 
 library(randomForest) # basic implementation
 library(ranger)       # a faster implementation of randomForest
 library(caret)        # an aggregator package for performing many machine learning models
-library(h2o)          # an extremely fast java-based platform
+#library(h2o)          # an extremely fast java-based platform
 
 # dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
 # dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
@@ -422,7 +432,7 @@ RMSE = function(m, o){
 
 new <- predict(optimal_ranger, data=test)
 sqrt(sum((new$predictions - test$RecPerExam)^2)/length(predictions))
-library(printr)
+#library(printr)
 kable(table(new$predictions, test$RecPerExam)/length(new$predictions),
       caption = "Predictions of the tuned random forest model (y-axis) versus true classifications (x-axis). Performance achieved is about 76%.")
 
