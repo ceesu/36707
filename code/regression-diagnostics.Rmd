@@ -1,0 +1,39 @@
+---
+title: "Regression Diagnostics"
+author: "Alex Reinhart"
+date: "9/13/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Visual inference
+
+We'll be doing visual inference. This means we'll generate random plots and hide the real diagnostic plot among them. This helps you learn what perfectly normal random variation looks like, and attunes you to the different kinds of model misspecification that might happen.
+
+You'll need to install the `nullabor` package for this, as well as `ggplot2`.
+
+```{r}
+library(nullabor)
+library(ggplot2)
+```
+
+## QQ plots
+
+It can be hard to tell if a Q-Q plot is really normal. Here we'll make a lineup where one dataset follows a non-normal distribution, and the others are normal -- can you spot the non-normal distribution?
+
+```{r}
+N <- 200 # try different sample sizes
+data <- data.frame(x = rt(N, 3)) # replace rt with any other distribution
+
+# don't change the below
+d <- lineup(null_dist("x", "norm"), data)
+
+ggplot(d, aes(sample = x)) + 
+  geom_qq() +
+  geom_qq_line() +
+  facet_wrap(~ .sample) +
+  theme_bw()
+```

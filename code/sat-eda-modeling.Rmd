@@ -1,0 +1,125 @@
+---
+title: "SAT data EDA and modeling"
+author: "Alex Reinhart"
+date: "9/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## SAT Data
+
+This dataset, from the book *The Statistical Sleuth*, gives average SAT scores for each state in the United States in 1982, along with variables such as the median income of families of students who took the test, the fraction of test-takers who attended public schools, state expenditures on secondary schools, and so on. Run `help(case1201)` to get a description of all variables. Here's what it looks like:
+
+```{r}
+library(Sleuth3)
+
+head(case1201)
+
+nrow(case1201)
+ncol(case1201)
+```
+
+This was back in the day when the SAT had only verbal and quantitative sections, and the score here is the total score, out of 1600, averaged over all students in the state.
+
+We want to examine the relationship between the variables and SAT scores. There are undoubtedly many factors involved: for example, in 1982 the SAT was not as ubiquitous as it is today, and many students in Midwestern states took the ACT instead; only students intending to attend schools out-of-state took the SAT.
+
+Our research questions:
+
+1. After accounting for the percentage of students who took the test and the median class rank of the test takers (to adjust, somewhat, for the selection bias in the samples from each state), which variables are associated with state SAT scores?
+2. After accounting for the percentage of takers and the median class rank of the takers, how do the states rank?
+3. Which states perform best for the amount of money they spend?
+
+## EDA
+
+Let's look at histograms first.
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+theme_set(theme_bw())
+
+sat_hist <- ggplot(case1201, aes(x=SAT)) +
+  geom_histogram(binwidth=50) +
+  labs(x="Mean SAT score")
+
+takers_hist <- ggplot(case1201, aes(x=Takers)) +
+  geom_histogram(binwidth=10) +
+  labs(x="Percent of students tested")
+
+income_hist <- ggplot(case1201, aes(x=Income)) +
+  geom_histogram(binwidth=25) +
+  labs(x="Mean household income ($100s)")
+
+years_hist <- ggplot(case1201, aes(x=Years)) +
+  geom_histogram(binwidth=0.5) +
+  labs(x="Years of science/humanities courses")
+
+public_hist <- ggplot(case1201, aes(x=Public)) +
+  geom_histogram(binwidth=10) +
+  labs(x="Percent of students in public schools")
+
+expend_hist <- ggplot(case1201, aes(x=Expend)) +
+  geom_histogram(binwidth=5) +
+  labs(x="State expenditures/student ($100s)")
+
+rank_hist <- ggplot(case1201, aes(x=Rank)) +
+  geom_histogram(binwidth=5) +
+  labs(x="Median class rank of test-takers")
+
+
+grid.arrange(sat_hist, takers_hist, income_hist, years_hist,
+             public_hist, expend_hist, rank_hist)
+
+```
+
+Interesting -- one state seems to have a huge expenditure per student compared to the others. What state is that?
+
+```{r}
+case1201[which.max(case1201$Expend),]
+```
+
+Ah, Alaska. Must be expenditures on polar bear security systems.
+
+(more accurately, there's probably an effect due to schools being smaller and more rural)
+
+Now let's eyeball all the relationships.
+
+```{r}
+pairs(case1201[, -1]) # ignore State
+```
+
+What about the (linear) correlations?
+
+```{r}
+round(cor(case1201[,-1]), 2)
+```
+
+Here we can confirm some of the observations of the problem statement. The scatterplot matrix shows clear relationships between SAT, Takers, and Rank. Interestingly, we can also note Alaska’s features, since we know it’s the state with the very high ’expend’ value. We can see that Alaska has a rather average SAT score despite its very high levels of spending. For now we will leave Alaska in the data set, but a more complete analysis would seek to account for outliers and high influence points (to be discussed later). In fact, this dataset contains two rather obvious outliers.
+
+One feature visible in both the scatterplot and the histogram is the gap in the distribution of Takers. When there is such a distinct gap in a variable’s distribution, sometimes it is a good idea to consider a transformation from a continuous variable to an indicator variable.
+
+Since subtle trends are often difficult to spot in scatterplot matrices, sometimes a correlation matrix can be useful, as seen above. Correlation matrices usually print 8-10 significant digits, so the use of the `round` function makes the output more easily readable. We note that both the Income and Years variables have moderately strong positive correlations with the response variable (SAT). The respective correlations of 0.58 and 0.33 indicate that higher levels of income and years of education in sciences and humanities are generally associated with higher mean SAT scores. However, this does not imply causation, and each of these trends may be nullified or even reversed when accounting for the other variables in the data set!
+
+A variable such Years may be of particular interest to researchers. Although neither science nor humanities are directly tested on the SAT, researchers may be interested in whether an increase in the number of years of such classes is associated with a significant increase in SAT score. This may help them make recommendation to schools as to how to plan their curricula.
+
+## A starting regression
+
+Let's fit a model predicting SAT score from all other variables. We can worry about the causal estimation later; this is just for eyeballing.
+
+```{r}
+fit <- lm(SAT ~ Takers + Income + Years + Public + Expend + Rank, data=case1201)
+
+summary(fit)
+```
+
+Cool. Let's look at the residuals to see how well we did:
+
+```{r}
+rs <- resid(fit)
+
+qqnorm(rs)
+qqline(rs)
+```

@@ -1,0 +1,86 @@
+---
+title: "Regression Assumptions"
+author: "Alex Reinhart"
+date: "9/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Let's explore some regression assumptions. To do this, we'll generate fake data with various assumption violations, and see what happens to the regressions when we fit them.
+
+We'll work with 100 data points in five variables, plus an intercept, so there are six parameters. We'll generate X from a Uniform(0, 1).
+
+```{r}
+N <- 100
+beta <- c(1.7, -0.2, 2.4, 0, -0.8, -5.3)
+sigma <- 0.5
+
+generate_X <- function() {
+  X <- matrix(runif(N * (length(beta) - 1)), nrow=N)
+  
+  # add an intercept column
+  return(cbind(rep(1, N), X))
+}
+```
+
+Here are functions to generate Y from X using beta. You'll modify these function to explore the results:
+
+```{r}
+# Generate errors for all X. Takes X as an argument; in a correctly specified model,
+# the error doesn't depend on X, but in our model it might.
+generate_error <- function(X) {
+  # TODO Try other errors!
+  return(sigma * rnorm(nrow(X)))
+}
+
+# Generate Y using X, beta, and the error.
+generate_Y <- function(X) {
+  # TODO Try misspecifying the model!
+  return(X %*% beta + generate_error(X))
+}
+```
+
+We'll fit the model the usual way:
+
+```{r}
+# Do ordinary least squares to fit the model.
+# You shouldn't need to change this function.
+fit_model <- function(X, Y) {
+  beta_hat <- solve(t(X) %*% X) %*% t(X) %*% Y
+  
+  return(beta_hat)
+}
+```
+
+And we'll use this convenience function to generate 1000 fake datasets, fit to each, and see what betas we get from each trial.
+
+```{r}
+get_betas <- function() {
+  num_trials <- 1000
+  
+  betas <- matrix(NA, nrow=num_trials, ncol=length(beta))
+  
+  for (trial in seq_len(num_trials)) {
+    X <- generate_X()
+    Y <- generate_Y(X)
+    betas[trial,] <- fit_model(X, Y)
+  }
+  
+  return(betas)
+}
+
+# To get means:
+# colMeans(betas)
+
+# To get standard deviations:
+# apply(betas, 2, sd)
+```
+
+Now verify what we've discussed about regression assumptions. Look particularly at:
+
+1. What if you make the error proportional to, say, one column of X?
+2. What if you put in `rt()` instead of `rnorm()`? Maybe the result would change if N were smaller or larger.
+3. What if you make `generate_Y` have a bit of non-linearity?

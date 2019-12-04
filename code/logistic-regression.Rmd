@@ -1,0 +1,86 @@
+---
+title: "Logistic Regression"
+author: "Alex Reinhart"
+date: "10/2/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Fitting a Model
+
+We'll use a dataset from the MASS package about diabetes in Pima Indian women. 532 women were tested for diabetes, and the researchers also recorded covariates such as their blood pressure, body mass index, age, and so on.
+
+The data is already split into training and test sets for us; note that the Type column is a factor with levels "Yes" and "No", and R treats the first level of the factor as failure (0) and all other levels as success (1). Here "No" is the first level, so this is what we want.
+
+```{r}
+library(MASS)
+fit <- glm(type ~ npreg + glu + bp + skin + bmi + ped + age, 
+           data=Pima.tr, family=binomial(link="logit"))
+summary(fit)
+```
+
+## Residual diagnostics
+
+The `residuals` function for `glm` fits obtains the deviance residuals by default, so we can plot residuals vs. predicted probabilities:
+
+```{r}
+plot(predict(fit, type="response"),
+     residuals(fit),
+     xlab="Predicted probability",
+     ylab="Deviance residual")
+```
+
+Don't worry, that goofiness is expected. The residuals *have* to lie on one of those two lines, since the true values are either 0 or 1.
+
+We can also plot residuals against specific predictors:
+
+```{r}
+plot(Pima.tr$bmi,
+     residuals(fit),
+     xlab="Body mass index",
+     ylab="Deviance residual")
+```
+
+We're looking for the same patterns we looked for in ordinary linear regression, but the structure of the residuals here makes the patterns harder to see.
+
+## Comparing models
+
+Suppose we fit a simpler model:
+
+```{r}
+reduced.fit <- glm(type ~ npreg + glu + bmi + ped + age, 
+                   data=Pima.tr, family=binomial(link="logit"))
+
+anova(fit, reduced.fit)
+```
+
+That's a very small change in deviance, suggesting the two variables we left out (`bp` and `skin`) do not contribute to the model.
+
+Not that because AIC and BIC are defined in terms of the log-likelihood, we can use them in GLMs just like in ordinary linear models:
+
+```{r}
+AIC(fit)
+AIC(reduced.fit)
+```
+
+## Making predictions
+
+The `predict` function for `glm` objects takes an extra argument, `type`. By default, the predictions are "on the scale of the linear predictors", meaning it predicts $X \beta$. If you want predictions on the scale of the response -- meaning probabilities, in our logistic regression case -- then you want `type="response"`. You might use this if you want to calculate classification error rates on a test set, for example:
+
+```{r}
+test_predictions <- ifelse(predict(fit, Pima.te, type="response") >= 0.5,
+                           1, 0)
+
+mean(test_predictions == ifelse(Pima.te$type == "Yes", 1, 0))
+```
+
+Not a bad test-set accuracy for a model with no effort put into it! But before we get too confident:
+
+```{r}
+table(Pima.te$type)
+```
+
+So 67% of people in the test set do not have diabetes, meaning that even the stupidest model *should* get 67% accuracy or better. So 80% is not an incredibly huge improvement over just guessing "no" all the time.

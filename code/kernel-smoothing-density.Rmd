@@ -1,0 +1,61 @@
+---
+title: "Kernel Smoothing and Densities"
+author: "Alex Reinhart"
+date: "9/27/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Kernel Smoothing
+
+For the ordinary Nadaraya--Watson kernel smoother, R's built in `ksmooth` function works fine:
+
+```{r}
+plot(cars$speed, cars$dist)
+lines(ksmooth(cars$speed, cars$dist, kernel="normal", bandwidth=1))
+lines(ksmooth(cars$speed, cars$dist, kernel="normal", bandwidth=2), col=2)
+lines(ksmooth(cars$speed, cars$dist, kernel="normal", bandwidth=3), col=3)
+```
+
+`ksmooth` is very simple. You can pick a couple different kernels and can specify the bandwidth, but it does not do local linear or local polynomial kernel regression, as ESL describes in 6.1.1.
+
+The `np` package from CRAN is a very flexible package for nonparametric regression. It supports many kernels, has methods for selecting bandwidths, and can do regressions with many columns in X, including discrete variables. We run `npregbw` to let it select bandwidths for each X variable automatically (using cross-validation methods), then provide these bandwidths to `npreg`:
+
+```{r}
+suppressMessages(library(np))
+
+## "ll" for "local-linear"; "lc" does Nadaraya--Watson
+bw <- npregbw(dist ~ speed, data=cars, regtype="ll")
+bw
+
+loclinfit <- npreg(bw)
+loclinfit
+
+plot(loclinfit)
+points(cars$speed, cars$dist)
+```
+
+You can see the best cross-validated bandwidth is somewhat wider than the ones we were trying for `ksmooth`.
+
+`npreg` supports continuous data, categorical data, and even ordered variables.
+
+## Kernel Density Estimation
+
+The built-in function `density` does univariate kernel density estimation. It takes a vector of points and returns a list with `x` points and the densities (`y`) corresponding to each point. It lets you select a bandwidth or uses several simple rules to pick a bandwidth: it can use cross-validation, Silverman's rule (setting the bandwidth proportional to the standard deviation in a complicated way), or a few other heuristic methods.
+
+```{r}
+plot(density(cars$speed, bw="ucv"))
+rug(cars$speed)
+```
+
+Want a fancier kernel density estimator for multiple variables? Consider the `npudens` function from the `np` package. You first use `npudensbw` to select a bandwidth (using cross-validation or other rules), then use `npudens` to get a density estimate. For example, we can get the joint density of `speed` and `dist`:
+
+```{r}
+bw <- npudensbw(~ speed + dist, data=cars)
+
+dens <- npudens(bw)
+plot(dens) ## fancy animation -- doesn't show up in Rmd well
+```
