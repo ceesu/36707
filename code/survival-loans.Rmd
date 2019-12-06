@@ -21,7 +21,7 @@ First, we load the data.
 
 ```{r}
 library(survival)
-loans = read.csv("loans.csv")
+loans = read.csv("../data/loans.csv")
 ```
 
 Here's how we code the data and produce the Kaplan-Meier plot.

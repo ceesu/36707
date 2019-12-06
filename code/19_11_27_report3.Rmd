@@ -96,8 +96,6 @@ Lastly, we checked what proportion of the population might be influenced to have
 
 Overall, our analysis suggests that the information given at checkups may be improved in order to raise public perception of GHEs in Vietnam. Further, those who interact more often with the health system seem more inclined to get regular yearly GHEs. 
 
-\newpage
-
 ## Introduction
 
 Due to their importance for detecting early incidence of disease, we wanted to determine whether we can determine what factors would explain and predict who would undergo a yearly general health examination (GHE). Based on the previous work of [@Vuong2017] we knew that specific demographics, personal biases or experiences with checkups may prevent Vietnamese citizens from wanting to undergo GHEs. To investigate this question, we used the public health dataset published by [@Vuong2017]. It was collected by public health researchers in Vietnam who wanted to determine what obstacles prevented use of regular check-ups. They surveyed respondants with in person interviews and produced 2,068 responses. Of these cases, 1467 surveyed reported when they had undergone a GHE.
@@ -115,13 +113,13 @@ Lastly, we checked what proportion of the population might be influenced to have
 
 After importing the data, we found there was 90 cases with missing data out of the 2068 participants. The variables with missing data included numeric variables only: height, weight and the ratings of GHEs e.g. percieved timeliness of the checkup. We first discarded height and weight since these two correspond fully to BMI (also see EDA). There seemed to be a possibility that the remainder missing cases were informative missing data, since the participants had answered everything else. Therefore we kept the other observations that had missing data.
 
-We also looked for outliers in the data among the remaining variables. Only the Age and BMI directly inform us about the patient's health so outliers in these variables are very important. Lastly we removed outliers in the date to restrict participants from September to October 2016. This left 1941 responses.  
+We also looked for outliers in the data among the remaining variables. Only the Age and BMI directly inform us about the patient's health so outliers in these variables are very important and were removed (see EDA). Lastly we removed outliers in the date to restrict participants from September to October 2016. This left 1941 responses.  
 
 ## Exploratory Data Analysis 
 
 We may hypothesize that the respondent's general health is inversely related to their visits to GHEs. Furthermore their perceptions of GHEs may be approximately correlated with what value they have derived from the procedures in improving their health. Therefore our hypothesis of the connection between frequency of GHEs and the other covariates is illustrated in Figure 1.
 
-```{r causal, fig.width=8, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
+```{r causal, fig.width=6, fig.height=1.5, echo=FALSE, fig.cap="\\label{fig:cause} Causal diagram illustrates hypothesized relationships between checkups, disease and cost of public healthcare."}
 
 g <- dagitty('dag {
     health [pos="0,0.75"]
@@ -143,7 +141,7 @@ Data were collected in 2016 from participants from 13 to 83 years of age, on 31 
 
 BMI is an important indication of fitness and calculated as weight (kg) / [height (m)]^2. When we calculated the BMI from the height and weight we found that the quantities corresponded exactly, as seen in Figure \ref{fig:trim} D. Therefore since the information is redundant and BMI is more indicative of health, we discarded height and weight variables.
 
-```{r bmi, include=FALSE, fig.width=5, fig.height=4, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:bmi} BMI corresponds to height and weight."}
+```{r bmi, include=FALSE, fig.width=5, fig.height=5, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:bmi} BMI corresponds to height and weight."}
 test <- data$BMI/(data$weight/((data$height/100)^2))
 outs <- data[test > 1.2,] #NA
 outs <- data[test < 0.5,]
@@ -168,9 +166,9 @@ p1 <-ggplot(data, aes(x= BMI, y = weight/((height/100.0)**2)))+
   geom_point()#+theme_hw #+ ylab("Testosterone in pg/mL")
 # boxplot(test)
 p2 <-ggplot(data, aes(y=Age))+
-  geom_boxplot() +theme_hw#+ ylab("Log(Testosterone in pg/mL)")
+  geom_boxplot() +theme_hw+ ylab("Age (years)")
 p3 <-ggplot(data, aes(y=date))+
-  geom_boxplot() +theme_hw#+ ylab("Cortisol in nMol/L")
+  geom_boxplot() +theme_hw+ ylab("Date (YYYYMMDD)")
 p4 <-ggplot(data, aes(y= BMI))+
   geom_boxplot() +theme_hw
 # summary(test)
@@ -199,15 +197,15 @@ chart.Correlation(dat[vars], pch=19)
 
 Based upon this, we constructed scores to represent the rating of the quality and the information respectively by averaging the corresponding variables, which we could use later on to quickly summarize them. We plotted the distribution of these two score variables in Figure \ref{fig:q1}. There were 20 missing cases for the quality score and 2 missing cases for the information score. 
 
-## What is the current perceptions of checkup quality and the information recieved in checkups?
+## Current perceptions of checkup quality and the information recieved in checkups
 
 Figure \ref{fig:q1} A-B shows that overall, about half of respondents believe that checkups are a waste of time or waste of money. In fact about 25%, or 582 out of our 1941 respondents believed both. However we wanted to know what aspects of the checkups are good versus need improvement.
 
-In order to summarize how respondents felt about the specific parts of checkups, we first looked at the distibutions of the ratings they gave of the checkups. The distributions across the diagonal in Figure \ref{fig:pairs} show summaries of the main rating variables. As noted, these ratings are also significantly correlated and thus we averaged them to make the quality and information scores which are summarized in Figure \ref{fig:q1}. The mean quality score is 3.54/5 and the mean information score is 2.82/5.  
+In order to summarize how respondents felt about the specific parts of checkups, we first looked at the distibutions of the ratings they gave of the checkups. We checked pairwise distributions of the main rating variables (data not shown). As noted, these ratings are also significantly correlated and thus we averaged them to make the quality and information scores which are summarized in Figure \ref{fig:q1}. The mean quality score is 3.54/5 and the mean information score is 2.82/5.  
 
 This suggests that the quality of checkups is viewed more favorably than the information given by checkups. Therefore to improve, it may help to start by changing the sufficiency, attractivenness and impressiveness of the information given in check-ups.
 
-```{r q1, fig.width=10, fig.height=4, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Perception of GHEs. A) About 50% of respondent believe check-ups are a waste of time. B) About 40% of respondent believe check-ups are a waste of money. C-D) The mean quality score is 3.54/5 and the mean information score is 2.82/5. "}
+```{r q1, fig.width=10, fig.height=2, results='asis', fig.height=6, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:q1} Perception of GHEs. A) About 50% of respondent believe check-ups are a waste of time. B) About 40% of respondent believe check-ups are a waste of money. C-D) The mean quality score is 3.54/5 and the mean information score is 2.82/5. "}
 
 ####### NEW VARS
 dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
@@ -222,10 +220,10 @@ dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
 #cat(table(dat$Wsttime, dat$Wstmon))
 # cat(xtabs(~Wsttime + Wstmon, data=dat))
 #kable(table(dat$Wsttime, dat$Wstmon))
-p1 <- histogram(dat$quality_score, nint=5)
-p2 <- histogram(dat$info_score, nint=5)
-p3 <- histogram(dat$Wsttime, xlab = "Wsttime")
-p4 <- histogram(dat$Wstmon, xlab = "Wstmon")
+p1 <- histogram(dat$quality_score, nint=5,  xlab = "Quality score")
+p2 <- histogram(dat$info_score, nint=5, xlab = "Information score")
+p3 <- histogram(dat$Wsttime, xlab = "Waste of time?")
+p4 <- histogram(dat$Wstmon, xlab = "Waste of money?")
 # dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
 # dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
 
@@ -236,7 +234,7 @@ plot_grid(p3, p4, p1,p2,
           nrow=1, labels = c('A', 'B', 'C', 'D'), label_size = 20)
 ```
 
-## What are the most important factors that make participants likely to take a general health exam every 12 months?
+## Determining the most important factors that make participants likely to take a general health exam every 12 months
 
 We aimed to determine what factors make a person less likely to get check-up every twelve months by modelling the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels: less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months, unknown = respondent doesn't know. We first trimmed the cases that are 'unknown' since this is not an informative response, leaving 1467 cases. We interpreted responses with the less24 value as 'likely to get a check-up every twelve months', and those with the g24 value as not likely to get a checkup very twelve months. In this setup, we additionally trimmed the data for respondents who got their checkup between 12 and 24 months before the survey since it's unclear which category they wold fall into.
 
@@ -252,7 +250,7 @@ Starting from these 39 predictors and AIC of  609.5, the model summarized in Tab
 
 In particular, the effect size of the RecExam variable is largest as well as significant at the p < 0.001 level. The coefficients in Table 1 suggest that relative to a respondent with the baseline values of the variables given above, a respondent who makes more frequent contact with the healthcare system is much more likely to get a yearly checkup.
 
-```{r q2, fig.width=5, results='asis', fig.height=5, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:q2} Fit metrics for the model chosen by stepwise variable selection."}
+```{r q2, fig.width=5, results='asis', fig.height=5, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:q2} Diagnostic plots for the model chosen by stepwise variable selection."}
 # http://www.science.smith.edu/~jcrouser/SDS293/labs/lab9-r.html
 # dat$quality_score <- rowMeans(dat[,c(31:35)], na.rm = TRUE)
 # dat$info_score <- rowMeans(dat[,c(42:45)], na.rm = TRUE)
@@ -274,6 +272,9 @@ step.model <- full.model %>% stepAIC(#direction = "forward",
 
 par(mfrow=c(2,2))
 plot(step.model)
+```
+
+```{r table, results='asis', fig.height=5, echo=FALSE, message=FALSE, warning= FALSE, fig.cap="\\label{fig:q2} Fit metrics for the model chosen by stepwise variable selection."}
 # set.seed(8)
 # library(bestglm)
 # res.bestglm <-bestglm(Xy = dat_q2,
@@ -302,11 +303,11 @@ stargazer(step.model,
 ```
 
 
-## Which demogrphic will be most likely to take a general health exam?
+## Predicting which demographic will be most likely to take a general health exam
 
 In order to predict which people would be easiest to convince to take a GHE every 12 months, we again build a model of the time since respondent last visited a doctor for a check-up (RecPerExam). One of the four responses is 'unknown', meaning the respondent doesn't know when they last visited a doctor for a check-up when not prompted by a specific illness. However, we can try to predict for the respondants who answered 'unknown' whether they would fall into one of the other three categries  (less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months).  We first set aside the cases for which RecPerExam is 'unknown'. Working with the remaining 1467 cases, we built a random forest model using the package Ranger to predict RecPerExam. 
 
-We chose to use a random forest model due to the large number of predictors available. Since here we are interested in predicting RecPerExam, rather than interpretation, we decided to include all of the potential predictor variables (other than id). To avoid missing values as much as possible, we also used our quality and information scores in the place of the underlying ratings. We randomly shuffled the rows and split the data 7:3 into a training and test set. 
+We chose to use a random forest model due to the large number of predictors available Since here we are interested in predicting RecPerExam, rather than interpretation, we decided to include all of the potential predictor variables (other than id). To avoid missing values as much as possible, we also used our quality and information scores in the place of the underlying ratings. We randomly shuffled the rows and split the data 7:3 into a training and test set. 
 
 To check how many trees we should have in the random forest, we first plotted the error versus the number of trees when using default parameters for the random forest in Figure \ref{fig:q3}. We can see that without tuning, the performance error stabilizes around 100 trees. As well the performance on the cases with less than 12 months are predicted better than the other two cases due to the greater number of cases.
 
@@ -349,6 +350,7 @@ plot(c(0,1),type="n", axes=F, xlab="", ylab="")
 legend("top", colnames(m1$err.rate),col=1:4,cex=0.8,fill=1:4)
 ```
 
+
 Subsequently we used ranger to tune the following parameters, proceeding with 100 trees. 
 
 * mtry: number of variables to randomly sample as candidates at each split. We tried a range from 2 to 46 (the total number of predictors).
@@ -359,7 +361,7 @@ The parameters of the best classifier, which achieved an out of bag root mean sq
 
 We were also interested in characteristics of the patients who haven’t gotten an exam in the last 12 months, but are most like other patients who have. We plotted the variable importance of this classifier in Figure \ref{fig:tune} and found considerable overlap with the significant variables found by glm model fitting.
 
-```{r tune, fig.width=4, results='asis', fig.height=2, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:tune} Variable importance of tuned random forest classifier."}
+```{r tune, fig.width=6, results='asis', fig.height=2, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:tune} Variable importance of tuned random forest classifier."}
 
 # hyperparameter grid search
 hyper_grid <- expand.grid(
@@ -429,20 +431,25 @@ optimal_ranger$variable.importance %>%
   dplyr::arrange(desc(x)) %>%
   dplyr::top_n(10) %>%
   ggplot(aes(reorder(names, x), x)) +
+  ylab("Importance (Gini index)")+
+  xlab("")+
+  #labs(x="Importance (Gini index)")+
   geom_col() +
   coord_flip() +
-  xlab("Importance (Gini index)")+
-  ggtitle("Top 10 important variables")
+  ggtitle("Top 10 important variables in Random Forest classifier")
 ```
 
 
 Next, we used our classifier to predict the status of the 466 unknown cases.  The classifier predicts 343 'less12' cases, 101 'g24' cases and 22 'b1224' cases. This suggests that about 101/343 or about 30% of respondents in the population studied could be prompted to get an exam if they had not gotten one in the last 12 months.
 
+\newpage
+
 ```{r classifier, fig.width=6, results='asis', fig.height=3, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:classifier} Distribution of predicted RecPerExam for respondents who did not know when their last visit was. RecPerTime represents the time since therespondent last visited a doctor for a check-up, not prompted by a specific illness."}
 dat_last <- dat[2:48] %>% filter(RecPerExam == "unknow") %>% droplevels() %>% dplyr::select(-c(31:35, 42:45)) %>% na.omit()
 
 new <- predict(optimal_ranger, data=dat_last)
-histogram(new$predictions)
+opar=par(ps=8) 
+histogram(new$predictions, main = "Predictions of time since last unprompted check-up", xlab = "")
 ```
 
 ## Conclusion
@@ -451,6 +458,6 @@ We have examined the relationship between general health exam (GHE) attendance a
 
 Secondly, we saw that among the most important predictors of whether a respondent is more likely to take a GHE yearly without being prompted is how frequently they get examinations for other reasons. In fact our model suggests those who take a voluntary examination are 5 times more likely than even those who have 'worrying symptoms' to get unprompted checkups yearly. When we examined which variables are most important for the classifier that we built to identify which respondents would take a GHE yearly, we also found that the time of their last checkup for medical reasons was by far the variable with the highest importance. Based upon our classifier, about 30% of the cases which had not reported when their last GHE was had a similar profile 
 
-However, there are some caveats to this analysis. We found in our EDA that there is an imbalance between the number of people who self-reported as having a GHE within the past year, and those who gave all other responses. We also used those who reported as having a GHE within more than 2 years as a stand in for those who would be reluctant to undergo a general GHE and those who reported as having a GHE within 12-24 months as a stand in for those who could presumably be persuaded to undergo a general GHE. As well, inherently we did not have a precise measure of the underlying health of the respondents here, so it is difficult to determine their general health status which we hypothesized could be a confounder of how often they will attend a GHE. 
+However, there are some caveats to this analysis. We found in our EDA that there is an imbalance between the number of people who self-reported as having a GHE within the past year, and those who gave all other responses. We also used those who reported as having a GHE within more than 2 years as a stand in for those who would be reluctant to undergo a general GHE and those who reported as having a GHE within 12-24 months as a stand in for those who could presumably be persuaded to undergo a general GHE. As well, inherently we did not have a precise measure of the underlying health of the respondents here, so it is difficult to determine their general health status which we hypothesized could be a confounder of how often they will attend a GHE. Lastly we have used GLMs to find important covariates and random forest to classify the cases, however, both methods are supsceptible to class imbalance.
 
 ## Bibliography
