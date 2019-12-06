@@ -96,6 +96,8 @@ Lastly, we checked what proportion of the population might be influenced to have
 
 Overall, our analysis suggests that the information given at checkups may be improved in order to raise public perception of GHEs in Vietnam. Further, those who interact more often with the health system seem more inclined to get regular yearly GHEs. 
 
+\newpage
+
 ## Introduction
 
 Due to their importance for detecting early incidence of disease, we wanted to determine whether we can determine what factors would explain and predict who would undergo a yearly general health examination (GHE). Based on the previous work of [@Vuong2017] we knew that specific demographics, personal biases or experiences with checkups may prevent Vietnamese citizens from wanting to undergo GHEs. To investigate this question, we used the public health dataset published by [@Vuong2017]. It was collected by public health researchers in Vietnam who wanted to determine what obstacles prevented use of regular check-ups. They surveyed respondants with in person interviews and produced 2,068 responses. Of these cases, 1467 surveyed reported when they had undergone a GHE.
@@ -179,9 +181,9 @@ plot_grid(p3, p2,p4,p1,
 
 ### Pairwise distributions
 
-We checked the correlation among the numeric variables of the filtered dataset in Figure \ref{fig:pairs}. We observed that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information). 
+We checked the correlation among the numeric variables. We observed that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information). 
 
-```{r eda, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs} Pairwise correlations of numeric variables including their Pearson correlation coefficient in the top right quadrant.  We observed that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information)."}
+```{r eda, include= FALSE, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning= FALSE,fig.cap="\\label{fig:pairs} Pairwise correlations of numeric variables including their Pearson correlation coefficient in the top right quadrant.  We observed that there doesn't appear to be collinearity among the numeric variables. Furthermore, age and BMI have a reasonable correlation. Additionally, we found that the ratings naturally grouped by correlation into responses concerning the quality of GHEs (Tangibles, percieved quality of tangible equipment and personnel to Empathy, percieved empathy of the staff) and about the type of information they recieve during GHEs (SuffInfo, rating of the sufficiency, to Popular info, rating of the popularity of the information)."}
 # check relationships of all variables of interest
 #vars <- colnames(data)[c(2:13)]
 #cor(team_dat)
@@ -197,9 +199,7 @@ chart.Correlation(dat[vars], pch=19)
 
 Based upon this, we constructed scores to represent the rating of the quality and the information respectively by averaging the corresponding variables, which we could use later on to quickly summarize them. We plotted the distribution of these two score variables in Figure \ref{fig:q1}. There were 20 missing cases for the quality score and 2 missing cases for the information score. 
 
-## Introduction
-
-## Q1. What is the current perceptions of checkup quality and the information recieved in checkups?
+## What is the current perceptions of checkup quality and the information recieved in checkups?
 
 Figure \ref{fig:q1} A-B shows that overall, about half of respondents believe that checkups are a waste of time or waste of money. In fact about 25%, or 582 out of our 1941 respondents believed both. However we wanted to know what aspects of the checkups are good versus need improvement.
 
@@ -236,7 +236,7 @@ plot_grid(p3, p4, p1,p2,
           nrow=1, labels = c('A', 'B', 'C', 'D'), label_size = 20)
 ```
 
-## Q2. What are the most important factors that make participants likely to take a general health exam every 12 months?
+## What are the most important factors that make participants likely to take a general health exam every 12 months?
 
 We aimed to determine what factors make a person less likely to get check-up every twelve months by modelling the variable RecPerExam (the time since the respondent got an unprompted checkup). RecPerExam has four levels: less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months, unknown = respondent doesn't know. We first trimmed the cases that are 'unknown' since this is not an informative response, leaving 1467 cases. We interpreted responses with the less24 value as 'likely to get a check-up every twelve months', and those with the g24 value as not likely to get a checkup very twelve months. In this setup, we additionally trimmed the data for respondents who got their checkup between 12 and 24 months before the survey since it's unclear which category they wold fall into.
 
@@ -302,7 +302,7 @@ stargazer(step.model,
 ```
 
 
-## Q3. Which demogrphic will be most likely to take a general health exam?
+## Which demogrphic will be most likely to take a general health exam?
 
 In order to predict which people would be easiest to convince to take a GHE every 12 months, we again build a model of the time since respondent last visited a doctor for a check-up (RecPerExam). One of the four responses is 'unknown', meaning the respondent doesn't know when they last visited a doctor for a check-up when not prompted by a specific illness. However, we can try to predict for the respondants who answered 'unknown' whether they would fall into one of the other three categries  (less12 = less than 12 months, b1224 = between 12 and 24 months, g24 = over 24 months).  We first set aside the cases for which RecPerExam is 'unknown'. Working with the remaining 1467 cases, we built a random forest model using the package Ranger to predict RecPerExam. 
 
