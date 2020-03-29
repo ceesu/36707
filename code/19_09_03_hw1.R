@@ -21,19 +21,20 @@ g <- dagitty('dag {
 plot(g)
 
 impliedConditionalIndependencies(g )
-
 # arrival_delay _||_ avg_speed | depart_delay, time_of_flight
 # arrival_delay _||_ distance | depart_delay, time_of_flight
 # depart_delay _||_ distance
 # depart_delay _||_ time_of_flight | avg_speed, distance
+dseparated( g, "arrival_delay", "distance", c("depart_delay") )
+# [1] FALSE
+
 
 ###### tests whether there is any open path between two variables of interest
 dseparated( g, "arrival_delay", "distance", c("depart_delay", "time_of_flight") )
 # [1] TRUE 
 # so no connection between arrival_delay and distance in this case
 
-dseparated( g, "arrival_delay", "distance", c("depart_delay") )
-# [1] FALSE
+
 dseparated( g, "arrival_delay", "distance", c("depart_delay", "avg_speed") )
 # [1] FALSE
 
